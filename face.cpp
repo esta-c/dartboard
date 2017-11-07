@@ -22,7 +22,7 @@ using namespace cv;
 void detectAndDisplay( Mat frame );
 
 /** Global variables */
-String cascade_name = "cascade.xml";
+String cascade_name = "frontalface.xml";
 CascadeClassifier cascade;
 
 
