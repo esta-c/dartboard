@@ -13,6 +13,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
+#include <math.h>
 #include <numeric>
 
 using namespace std;
@@ -26,6 +27,16 @@ std::vector<Rect> chooseGroundTruths(int imageNumber);
 
 float f1( std::vector<Rect> dartboards,
 				  std::vector<Rect> groundTruths);
+
+void sobel( cv::Mat &input,
+							cv::Mat &sobelX,
+							cv::Mat &sobelY,
+							cv::Mat &sobelMag,
+							cv::Mat &sobelGr );
+
+void GaussianBlur(cv::Mat &input,
+									int size,
+									cv::Mat &blurredOutput);
 
 /** Global variables */
 String cascade_name = "cascade.xml";
@@ -92,15 +103,25 @@ std::vector<Rect> chooseGroundTruths(int imageNumber)
 std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 {
 	Mat frame_gray;
+  Mat sobelMag;
+  Mat sobelGr;
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
+	GaussianBlur(frame_gray, 5, frame_gray);
 
 	// 2. Perform Viola-Jones Object Detection
 	cascade.detectMultiScale( frame_gray, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
-	//2.5 Perform circle Detection
+	//2.5 Perform sobel transform
+	sobel(frame_gray,sobelX,sobelY,sobelMag,sobelGr);
+  imwrite("sobelMag.jpg",sobelMag);
+  imwrite("sobelGr.jpg",sobelGr);
+
+	//Circle Detection
+	
+
   // 3. Print number of dartboards found
 	std::cout << dartboards.size() << std::endl;
 
@@ -110,6 +131,68 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
 	}
 	return dartboards;
+}
+
+void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, cv::Mat &sobelGr){
+	sobelX.create(input.size(), input.type());
+	sobelY.create(input.size(), input.type());
+	sobelMag.create(input.size(), input.type());
+	sobelGr.create(input.size(), input.type());
+
+	int xKernel[3][3] = {{1,0,-1},{2,0,-2},{1,0,-1}};
+	int yKernel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
+
+
+	cv::Mat paddedInput;
+	cv::copyMakeBorder( input, paddedInput, 1, 1, 1, 1,cv::BORDER_REPLICATE);
+
+	for (int i = 0; i < input.rows;i++){
+		for (int j = 0;j < input.cols;j++){
+			int sum[2] = {0,0};
+			for (int m = -1;m<2;m++){
+				for (int n = -1;n<2;n++){
+					int imagey = i + m + 1;
+					int imagex = j + n + 1;
+
+					int kerny = 1 - m;
+					int kernx = 1 - n;
+
+					int imageVal = (int) paddedInput.at<uchar>(imagey,imagex);
+					int kernValx = xKernel[kerny][kernx];
+					int kernValy = yKernel[kerny][kernx];
+
+					sum[0] += imageVal * kernValx;
+					sum[1] += imageVal * kernValy;
+				}
+			}
+
+			double dir = 0;
+			if(sum[0] < 19 && sum[0] > -19 && sum[1] < 19 && sum[1] > -19){
+			}
+			else{
+
+					dir = atan2(sum[1],sum[0])*360/M_PI;
+
+			}
+			if(dir < 0){dir = 360 - (dir* -1);}
+			if(sum[0] < 0)sum[0] = sum[0]*-1;
+			if(sum[1] < 0)sum[1] = sum[1]*-1;
+
+			if(sum[0] > 255)sum[0]= 255;
+			if(sum[1] > 255)sum[1] = 255;
+
+			int mag = sqrt((sum[0]*sum[0]) + (sum[1]*sum[1]));
+			if(mag > 255){mag = 255;}
+			dir = (((dir - 0) * 255 / 360) + 0);
+
+			sobelMag.at<uchar>(i,j) = (uchar) mag;
+			sobelGr.at<uchar>(i,j) = (uchar) dir;
+
+			sobelX.at<uchar>(i, j) = (uchar) sum[0];
+			sobelY.at<uchar>(i, j) = (uchar) sum[1];
+
+		}
+	}
 }
 
 float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths) {
@@ -177,4 +260,56 @@ float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths) {
 	 printf("FN = %f\n", fn);
 	//add f1Score to total
 	return f1Score;
+}
+
+void GaussianBlur(cv::Mat &input, int size, cv::Mat &blurredOutput)
+{
+	// intialise the output using the input
+	blurredOutput.create(input.size(), input.type());
+
+	// create the Gaussian kernel in 1D
+	cv::Mat kX = cv::getGaussianKernel(size, -1);
+	cv::Mat kY = cv::getGaussianKernel(size, -1);
+
+	// make it 2D multiply one by the transpose of the other
+	cv::Mat kernel = kX * kY.t();
+
+	// we need to create a padded version of the input
+	// or there will be border effects
+	int kernelRadiusX = ( kernel.size[0] - 1 ) / 2;
+	int kernelRadiusY = ( kernel.size[1] - 1 ) / 2;
+
+	cv::Mat paddedInput;
+	cv::copyMakeBorder( input, paddedInput,
+		kernelRadiusX, kernelRadiusX, kernelRadiusY, kernelRadiusY,
+		cv::BORDER_REPLICATE );
+
+	// now we can do the convoltion
+	for ( int i = 0; i < input.rows; i++ )
+	{
+		for( int j = 0; j < input.cols; j++ )
+		{
+			double sum = 0.0;
+			for( int m = -kernelRadiusX; m <= kernelRadiusX; m++ )
+			{
+				for( int n = -kernelRadiusY; n <= kernelRadiusY; n++ )
+				{
+					// find the correct indices we are using
+					int imagex = i + m + kernelRadiusX;
+					int imagey = j + n + kernelRadiusY;
+					int kernelx = m + kernelRadiusX;
+					int kernely = n + kernelRadiusY;
+
+					// get the values from the padded image and the kernel
+					int imageval = ( int ) paddedInput.at<uchar>( imagex, imagey );
+					double kernalval = kernel.at<double>( kernelx, kernely );
+
+					// do the multiplication
+					sum += imageval * kernalval;
+				}
+			}
+			// set the output value as the sum of the convolution
+			blurredOutput.at<uchar>(i, j) = (uchar) sum;
+		}
+	}
 }
