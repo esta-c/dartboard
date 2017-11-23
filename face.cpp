@@ -16,6 +16,10 @@
 #include <math.h>
 #include <numeric>
 
+#define MIN_RAD 23
+#define MAX_RAD 125
+#define RADIUS_RANGE 103
+
 using namespace std;
 using namespace cv;
 
@@ -38,6 +42,19 @@ void GaussianBlur(cv::Mat &input,
 									int size,
 									cv::Mat &blurredOutput);
 
+void thresholdMag(cv::Mat &input,
+							 int threshVal);
+
+void houghCircle(cv::Mat &edges,
+										cv::Mat &thetas,
+										cv::Mat &grey,
+										cv:: Mat &space);
+
+/*void houghLines(cv::Mat&sobelMag,
+								cv::&sobelGrad,
+								cv::&lines,
+								cv::&houghSpaceLines); */
+
 /** Global variables */
 String cascade_name = "cascade.xml";
 CascadeClassifier cascade;
@@ -47,7 +64,7 @@ int imageNumber;
 int main( int argc, const char** argv )
 {
 	std::vector<Rect> dartboards;
-       // 1. Read Input Image
+  // 1. Read Input Image
 	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);
 
 	//Get the image number and gTNumber
@@ -93,7 +110,7 @@ std::vector<Rect> chooseGroundTruths(int imageNumber)
     {Rect(272,120,131,131)}, //13
     {Rect(120,101,125,127), Rect(989,95,122,125)}, //14
     {Rect(154,56,129,138)}, //15
-};
+	};
 	//get ground truths
 	std::vector<Rect> groundTruths = allGroundTruths[imageNumber];
 	return groundTruths;
@@ -103,24 +120,47 @@ std::vector<Rect> chooseGroundTruths(int imageNumber)
 std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 {
 	Mat frame_gray;
+	Mat sobelX;
+	Mat sobelY;
   Mat sobelMag;
   Mat sobelGr;
+	Mat canny;
+	Mat circles;
+	Mat hough;
+	Mat houghSpaceCircle;
+	Mat lines;
+	Mat houghSpaceLines;
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
-	GaussianBlur(frame_gray, 5, frame_gray);
+	GaussianBlur(frame_gray,15, frame_gray);
 
 	// 2. Perform Viola-Jones Object Detection
 	cascade.detectMultiScale( frame_gray, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
+	//perform canny edge Detection
+	Canny(frame_gray, canny, 80, 40, 3);
+
 	//2.5 Perform sobel transform
 	sobel(frame_gray,sobelX,sobelY,sobelMag,sobelGr);
-  imwrite("sobelMag.jpg",sobelMag);
-  imwrite("sobelGr.jpg",sobelGr);
 
-	//Circle Detection
-	
+	//threshold image
+	thresholdMag(sobelMag,70); //50
+
+	//hough transform circles
+	circles.create(frame_gray.size(), frame_gray.type());
+	circles = frame_gray;
+
+	houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
+	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
+
+	//write out images
+	imwrite("sobelMag.jpg", sobelMag);
+	imwrite("sobelGr.jpg", sobelGr);
+	imwrite("space.jpg", houghSpaceCircle);
+  imwrite("hough.jpg", circles);
+	imwrite("canny.jpg", canny);
 
   // 3. Print number of dartboards found
 	std::cout << dartboards.size() << std::endl;
@@ -133,7 +173,171 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	return dartboards;
 }
 
-void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, cv::Mat &sobelGr){
+void thresholdMag(cv::Mat &input,int threshVal)
+{
+	for(int i = 0;i < input.rows;i++)
+	{
+		for(int j = 0;j < input.cols;j++)
+		{
+			if(input.at<uchar>(i,j) > threshVal)
+			{
+				input.at<uchar>(i,j) = (uchar) 255;
+			}
+			else
+			{
+				input.at<uchar>(i,j) = (uchar) 0;
+			}
+		}
+	}
+}
+
+int*** malloc3dArray(int dim1, int dim2, int dim3)
+{
+	int i,j,k;
+	int*** array = (int ***)malloc(dim1*sizeof(int**));
+	for (i = 0; i< dim1; i++)
+	{
+ 		array[i] = (int **) malloc(dim2*sizeof(int *));
+		for (j = 0; j < dim2; j++)
+		{
+			array[i][j] = (int *)malloc(dim3*sizeof(int));
+    }
+  }
+	return array;
+}
+
+/*void houghLines(cv::Mat&sobelMag, cv::&sobelGrad, cv::&lines, cv::&houghSpaceLines)
+{
+	space.create(sobelGrad.size(), sobelGrad.height());
+	houghSpace[sobelGrad.cols][sobelGrad.rows];
+	for(int i = 0; i < sobelGrad.cols; i++)
+	{
+		for(int j = 0; j < sobelGrad.rows; j++)
+		{
+			houghSpace[i][j] = 0;
+		}
+	}
+	for(int i = 0; i < sobelGrad.cols; i++)
+	{
+		for(int j = 0; j < sobelGrad.rows; j++)
+		{
+			houghSpaceLines.a
+		}
+	}
+} */
+
+void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
+{
+	space.create(edges.size(), edges.type());
+	int*** houghSpace = malloc3dArray(edges.cols, edges.rows, RADIUS_RANGE);
+	for(int i = 0;i < edges.cols;i++)
+	{
+		for(int j = 0; j < edges.rows;j++)
+		{
+			for(int k = 0;k < RADIUS_RANGE;k++)
+			{
+				houghSpace[i][j][k] = 0;
+			}
+		}
+	}
+
+	for(int i = 0;i < edges.rows;i++)
+	{
+		for(int j = 0;j < edges.cols;j++)
+		{
+			space.at<uchar>(i,j) = 0;
+			int imageVal = edges.at<uchar>(i,j);
+			int theta = thetas.at<uchar>(i,j);
+			theta = (((theta - 0) * 360 / 255) + 0);
+			if(imageVal == 255 && theta > 30 && theta < 330)
+			{
+				for(int r = MIN_RAD;r < MAX_RAD;r++)
+				{
+					for(int q = 0;q < 2;q++)
+					{
+						int x0;
+						int y0;
+						if(q == 0)
+						{
+							x0 = (int) j - (r)*cos(theta);
+							y0 = (int) i - (r)*sin(theta);
+						}
+						else
+						{
+							x0 = (int) j + (r)*cos(theta);
+							y0 = (int) i + (r)*sin(theta);
+						}
+						int rad = r - MIN_RAD;
+						if((x0 < 1) || (y0 < 1)){ }
+						else if(x0 > (edges.cols - 1)){ }
+						else if(rad > 103){ }
+						else if(y0 > edges.rows - 1){ }
+						else
+						{
+							if(houghSpace[x0][y0][rad] == 0)
+							{
+								houghSpace[x0][y0][rad] += 1;
+							}
+							else
+							{
+								houghSpace[x0][y0][rad] *= 3;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for(int i = 1; i < edges.rows - 1;i++){
+		for(int j = 1; j < edges.cols - 1;j++){
+			int imval = 0;
+			imval = space.at<uchar>(i,j);
+			for(int k = 0;k < RADIUS_RANGE;k++){
+				int votes = 0;
+				imval += houghSpace[j][i][k]*1;
+				if(imval > 255)imval = 255;
+
+				votes += houghSpace[j][i][k];
+				votes += houghSpace[j+1][i][k];
+				votes += houghSpace[j-1][i][k];
+				votes += houghSpace[j][i+1][k];
+				votes += houghSpace[j][i-1][k];
+				if (votes > 600)
+				{
+					printf("votes = %i\n",votes );
+				}
+
+				if(votes > 2000)
+				{
+					int radius = k+ MIN_RAD;
+					grey.at<uchar>(i,j) = 40;
+					grey.at<uchar>(i,j-1) = 40;
+					grey.at<uchar>(i,j+1) = 40;
+					grey.at<uchar>(i-1,j) = 40;
+					grey.at<uchar>(i+1,j) = 40;
+					for(int y = -(radius);y < (radius+1);y++)
+					{
+						for(int x = -(radius);x < (radius+1);x++)
+						{
+							if(sqrt((x*x) + (y*y)) <= (radius) && sqrt((x*x) + (y*y)) > (radius-1))
+							{
+								if (i+y < 0 || i+y > edges.rows || j+x < 0 || j+x > edges.cols){ }
+								else
+								{
+									grey.at<uchar>(i + y,j + x) = 255;
+								}
+							}
+						}
+					}
+				}
+			}
+			space.at<uchar>(i,j) =(uchar) imval;
+		}
+	}
+}
+
+void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, cv::Mat &sobelGr)
+{
 	sobelX.create(input.size(), input.type());
 	sobelY.create(input.size(), input.type());
 	sobelMag.create(input.size(), input.type());
@@ -146,11 +350,15 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 	cv::Mat paddedInput;
 	cv::copyMakeBorder( input, paddedInput, 1, 1, 1, 1,cv::BORDER_REPLICATE);
 
-	for (int i = 0; i < input.rows;i++){
-		for (int j = 0;j < input.cols;j++){
+	for (int i = 0; i < input.rows;i++)
+	{
+		for (int j = 0;j < input.cols;j++)
+		{
 			int sum[2] = {0,0};
-			for (int m = -1;m<2;m++){
-				for (int n = -1;n<2;n++){
+			for (int m = -1;m<2;m++)
+			{
+				for (int n = -1;n<2;n++)
+				{
 					int imagey = i + m + 1;
 					int imagex = j + n + 1;
 
@@ -167,12 +375,10 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 			}
 
 			double dir = 0;
-			if(sum[0] < 19 && sum[0] > -19 && sum[1] < 19 && sum[1] > -19){
-			}
-			else{
-
+			if(sum[0] < 19 && sum[0] > -19 && sum[1] < 19 && sum[1] > -19){	}
+			else
+			{
 					dir = atan2(sum[1],sum[0])*360/M_PI;
-
 			}
 			if(dir < 0){dir = 360 - (dir* -1);}
 			if(sum[0] < 0)sum[0] = sum[0]*-1;
@@ -195,7 +401,8 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 	}
 }
 
-float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths) {
+float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths)
+{
 	float tpr = 0;
 	float tp = 0;
 	printf("size of ground truths %f\n", (float)groundTruths.size());
@@ -207,10 +414,9 @@ float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths) {
 			//if the box intersects check the level of intersection
 			if( (groundTruths[a].x + groundTruths[a].width) < dartboards[i].x || (dartboards[i].x + dartboards[i].width) < groundTruths[a].x
 					|| (groundTruths[a].y + groundTruths[a].height) < dartboards[i].y || (dartboards[i].y + dartboards[i].height) < groundTruths[a].y)
-			{ /*doesn't intersect*/ }
+			{ /*doesn't intersects*/ }
 			else
 			{
-				//what amount do they overlap by and is this enough to count
 				//intersection area
 				float intersectWidth = min(dartboards[i].x + dartboards[i].width, groundTruths[a].x + groundTruths[a].width) - max(dartboards[i].x, groundTruths[a].x);
 				float intersectHeight = min(dartboards[i].y + dartboards[i].height, groundTruths[a].y + groundTruths[a].height) - max(dartboards[i].y, groundTruths[a].y);
