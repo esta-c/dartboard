@@ -159,7 +159,7 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	imwrite("sobelMag.jpg", sobelMag);
 	imwrite("sobelGr.jpg", sobelGr);
 	imwrite("space.jpg", houghSpaceCircle);
-  imwrite("hough.jpg", circles);
+  imwrite("circles.jpg", circles);
 	imwrite("canny.jpg", canny);
 
   // 3. Print number of dartboards found
