@@ -16,9 +16,15 @@
 #include <math.h>
 #include <numeric>
 
-#define MIN_RAD 23
+#define MIN_RAD 25
 #define MAX_RAD 125
-#define RADIUS_RANGE 103
+#define RADIUS_RANGE 76
+
+//circle tester
+/*#define MIN_RAD 160
+#define MAX_RAD 170
+#define RADIUS_RANGE 11 */
+#define SIGN(a) ((a)>0 ? 1 : -1)
 
 using namespace std;
 using namespace cv;
@@ -125,6 +131,7 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
   Mat sobelMag;
   Mat sobelGr;
 	Mat canny;
+	Mat cannyBlurred;
 	Mat circles;
 	Mat hough;
 	Mat houghSpaceCircle;
@@ -134,7 +141,7 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
-	GaussianBlur(frame_gray,15, frame_gray);
+	GaussianBlur(frame_gray, 10, frame_gray);
 
 	// 2. Perform Viola-Jones Object Detection
 	cascade.detectMultiScale( frame_gray, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
@@ -142,11 +149,17 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	//perform canny edge Detection
 	Canny(frame_gray, canny, 80, 40, 3);
 
+	GaussianBlur(canny, 4, cannyBlurred);
+
 	//2.5 Perform sobel transform
-	sobel(frame_gray,sobelX,sobelY,sobelMag,sobelGr);
+	sobel(cannyBlurred,sobelX,sobelY,sobelMag,sobelGr);
+	imwrite("sobelGr.jpg", sobelGr);
 
 	//threshold image
 	thresholdMag(sobelMag,70); //50
+
+
+	imwrite("sobelMag.jpg", sobelMag);
 
 	//hough transform circles
 	circles.create(frame_gray.size(), frame_gray.type());
@@ -155,12 +168,11 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
 
-	//write out images
-	imwrite("sobelMag.jpg", sobelMag);
-	imwrite("sobelGr.jpg", sobelGr);
-	imwrite("houghspacecircle.jpg", houghSpaceCircle);
+
+	printf("writing circles\n");
   imwrite("circles.jpg", circles);
-	imwrite("canny.jpg", canny);
+	printf("finsihed\n");
+	//imwrite("canny.jpg", canny);
 
   // 3. Print number of dartboards found
 	std::cout << dartboards.size() << std::endl;
@@ -228,6 +240,9 @@ int*** malloc3dArray(int dim1, int dim2, int dim3)
 
 void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 {
+	float x, y, dx, dy;
+	int x1, y1, x2, y2;
+
 	space.create(edges.size(), edges.type());
 	int*** houghSpace = malloc3dArray(edges.cols, edges.rows, RADIUS_RANGE);
 	for(int i = 0;i < edges.cols;i++)
@@ -241,99 +256,124 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 		}
 	}
 
-	for(int i = 0;i < edges.rows;i++)
+	for(int i = 0;i < edges.cols;i++)
 	{
-		for(int j = 0;j < edges.cols;j++)
+		for(int j = 0;j < edges.rows;j++)
 		{
-			space.at<uchar>(i,j) = 0;
-			int imageVal = edges.at<uchar>(i,j);
-			int theta = thetas.at<uchar>(i,j);
-			theta = (((theta - 0) * 360 / 255) + 0);
-			if(imageVal == 255 && theta > 30 && theta < 330)
+			space.at<uchar>(j,i) = 0;
+			for(int k = 0;k < RADIUS_RANGE;k++)
 			{
-				for(int r = MIN_RAD;r < MAX_RAD;r++)
+				int r = k+MIN_RAD;
+				int imageVal = edges.at<uchar>(j,i);
+				float theta = thetas.at<uchar>(j,i);
+				theta = (theta / 255) * 180;
+				theta = theta * (M_PI / 180);
+				if(imageVal == 255)
 				{
-					for(int q = 0;q < 2;q++)
+					//printf("theta = %f, x = %i, y = % i\n", theta, i,j);
+					x = (r)*cos(theta);
+					y = (r)*sin(theta);
+					x1 = (int) (i + x); y1 = (int) (j + y);
+					x2 = (int) (i - x); y2 = (int) (j - y);
+					if((x1 > 1) && (y1 > 1) && (x1 < edges.cols - 1) && (y1 < edges.rows - 1))
 					{
-						int x0;
-						int y0;
-						if(q == 0)
+						if(houghSpace[x1][y1][r] == 0)
 						{
-							x0 = (int) j - (r)*cos(theta);
-							y0 = (int) i - (r)*sin(theta);
+							houghSpace[x1][y1][r] += 1;
 						}
 						else
 						{
-							x0 = (int) j + (r)*cos(theta);
-							y0 = (int) i + (r)*sin(theta);
+							houghSpace[x1][y1][r] += 3;
 						}
-						int rad = r - MIN_RAD;
-						if((x0 < 1) || (y0 < 1)){ }
-						else if(x0 > (edges.cols - 1)){ }
-						else if(rad > 103){ }
-						else if(y0 > edges.rows - 1){ }
+					}
+					if((x2 > 1) && (y2 > 1) && (x2 < edges.cols - 1) && (y2 < edges.rows - 1))
+					{
+						if(houghSpace[x2][y2][r] == 0)
+						{
+							houghSpace[x2][y2][r] += 1;
+						}
 						else
 						{
-							if(houghSpace[x0][y0][rad] == 0)
-							{
-								houghSpace[x0][y0][rad] += 1;
-							}
-							else
-							{
-								houghSpace[x0][y0][rad] *= 3;
-							}
+							houghSpace[x2][y2][r] += 3;
 						}
 					}
 				}
 			}
 		}
 	}
-	for(int i = 1; i < edges.rows - 1;i++){
-		for(int j = 1; j < edges.cols - 1;j++){
+	int highestVotes = 0;
+	for(int i = 1; i < edges.cols - 1;i++)
+	{
+		for(int j = 1; j < edges.rows - 1;j++)
+		{
 			int imval = 0;
-			imval = space.at<uchar>(i,j);
-			for(int k = 0;k < RADIUS_RANGE;k++){
+			imval = space.at<uchar>(j,i);
+			for(int k = 0;k < RADIUS_RANGE;k++)
+			{
 				int votes = 0;
-				imval += houghSpace[j][i][k]*1;
+				imval += houghSpace[i][j][k]*1;
 				if(imval > 255)imval = 255;
-
-				votes += houghSpace[j][i][k];
-				votes += houghSpace[j+1][i][k];
-				votes += houghSpace[j-1][i][k];
-				votes += houghSpace[j][i+1][k];
-				votes += houghSpace[j][i-1][k];
-				if (votes > 600)
+				votes += houghSpace[i][j][k];
+				votes += houghSpace[i+1][j][k];
+				votes += houghSpace[i-1][j][k];
+				votes += houghSpace[i][j+1][k];
+				votes += houghSpace[i][j-1][k];
+				if (votes > highestVotes)
 				{
-					printf("votes = %i\n",votes );
+					highestVotes = votes;
 				}
-
-				if(votes > 2000)
+			}
+		}
+	}
+	for(int i = 1; i < edges.cols - 1;i++)
+	{
+		for(int j = 1; j < edges.rows - 1;j++)
+		{
+			int imval = 0;
+			imval = space.at<uchar>(j,i);
+			for(int k = 0;k < RADIUS_RANGE;k++)
+			{
+				int votes = 0;
+				imval += houghSpace[i][j][k]*1;
+				if(imval > 255)imval = 255;
+				votes += houghSpace[i][j][k];
+				votes += houghSpace[i+1][j][k];
+				votes += houghSpace[i-1][j][k];
+				votes += houghSpace[i][j+1][k];
+				votes += houghSpace[i][j-1][k];
+				if (votes != 0)
+				{
+					votes = (votes * 1000) / (highestVotes);
+				}
+				if(votes > 750)
 				{
 					int radius = k+ MIN_RAD;
-					grey.at<uchar>(i,j) = 40;
-					grey.at<uchar>(i,j-1) = 40;
-					grey.at<uchar>(i,j+1) = 40;
-					grey.at<uchar>(i-1,j) = 40;
-					grey.at<uchar>(i+1,j) = 40;
+					grey.at<uchar>(j,i) = 40;
+					grey.at<uchar>(j,i-1) = 40;
+					grey.at<uchar>(j,i+1) = 40;
+					grey.at<uchar>(j-1,i) = 40;
+					grey.at<uchar>(j+1,i) = 40;
 					for(int y = -(radius);y < (radius+1);y++)
 					{
 						for(int x = -(radius);x < (radius+1);x++)
 						{
 							if(sqrt((x*x) + (y*y)) <= (radius) && sqrt((x*x) + (y*y)) > (radius-1))
 							{
-								if (i+y < 0 || i+y > edges.rows || j+x < 0 || j+x > edges.cols){ }
+								if (i+x < 0 || i+x > edges.cols || j+y < 0 || j+y > edges.rows){ }
 								else
 								{
-									grey.at<uchar>(i + y,j + x) = 255;
+									grey.at<uchar>(j + y, i + x) = 255;
 								}
 							}
 						}
 					}
 				}
 			}
-			space.at<uchar>(i,j) =(uchar) imval;
+			space.at<uchar>(j, i) = (uchar) imval;
 		}
 	}
+	printf("writing houghspace\n");
+	imwrite("houghspacecircle.jpg", space);
 }
 
 void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, cv::Mat &sobelGr)
@@ -378,9 +418,13 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 			if(sum[0] < 19 && sum[0] > -19 && sum[1] < 19 && sum[1] > -19){	}
 			else
 			{
-					dir = atan2(sum[1],sum[0])*360/M_PI;
+					dir = atan2(sum[1],sum[0])*180/M_PI;
 			}
-			if(dir < 0){dir = 360 - (dir* -1);}
+			if(dir < 0){dir = 180 - (dir* -1);}
+			if (dir != 0)
+			{
+				//printf("direction = %f, x = %i, y = %i\n",dir, j, i);
+			}
 			if(sum[0] < 0)sum[0] = sum[0]*-1;
 			if(sum[1] < 0)sum[1] = sum[1]*-1;
 
@@ -389,7 +433,7 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 
 			int mag = sqrt((sum[0]*sum[0]) + (sum[1]*sum[1]));
 			if(mag > 255){mag = 255;}
-			dir = (((dir - 0) * 255 / 360) + 0);
+			dir = (dir / 180) * 255;
 
 			sobelMag.at<uchar>(i,j) = (uchar) mag;
 			sobelGr.at<uchar>(i,j) = (uchar) dir;
@@ -405,7 +449,6 @@ float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths)
 {
 	float tpr = 0;
 	float tp = 0;
-	printf("size of ground truths %f\n", (float)groundTruths.size());
 	float fp = (float)dartboards.size();
 	int boardCount[10] = {};
 	for(int a = 0; a < (int)groundTruths.size(); a++) {
