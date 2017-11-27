@@ -30,36 +30,36 @@ using namespace std;
 using namespace cv;
 
 /** Function Headers */
-std::vector<Rect> detectAndDisplay( Mat frame,
-											 std::vector<Rect> dartboards );
+vector<Rect> detectAndDisplay(Mat frame,
+											 				vector<Rect> dartboards );
 
-std::vector<Rect> chooseGroundTruths(int imageNumber);
+vector<Rect> chooseGroundTruths(int imageNumber);
 
-float f1( std::vector<Rect> dartboards,
-				  std::vector<Rect> groundTruths);
+float f1( vector<Rect> dartboards,
+				  vector<Rect> groundTruths);
 
-void sobel( cv::Mat &input,
-							cv::Mat &sobelX,
-							cv::Mat &sobelY,
-							cv::Mat &sobelMag,
-							cv::Mat &sobelGr );
+void sobel( Mat &input,
+						Mat &sobelX,
+						Mat &sobelY,
+						Mat &sobelMag,
+						Mat &sobelGr);
 
-void GaussianBlur(cv::Mat &input,
+void GaussianBlur(Mat &input,
 									int size,
-									cv::Mat &blurredOutput);
+									Mat &blurredOutput);
 
-void thresholdMag(cv::Mat &input,
-							 int threshVal);
+void thresholdMag(Mat &input,
+							 		int threshVal);
 
-void houghCircle(cv::Mat &edges,
-										cv::Mat &thetas,
-										cv::Mat &grey,
-										cv:: Mat &space);
+void houghCircle(Mat &edges,
+								 Mat &thetas,
+								 Mat &grey,
+								 Mat &space);
 
-/*void houghLines(cv::Mat&sobelMag,
-								cv::&sobelGrad,
-								cv::&lines,
-								cv::&houghSpaceLines); */
+void houghLines(Mat&sobelMag,
+								Mat&sobelGrad,
+								Mat&lines,
+								Mat&houghSpaceLines);
 
 /** Global variables */
 String cascade_name = "cascade.xml";
@@ -69,14 +69,14 @@ int imageNumber;
 /** @function main */
 int main( int argc, const char** argv )
 {
-	std::vector<Rect> dartboards;
+	vector<Rect> dartboards;
   // 1. Read Input Image
 	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);
 
 	//Get the image number and gTNumber
 	imageNumber = atoi (argv[2]);
 
-	std::vector<Rect> groundTruths = chooseGroundTruths(imageNumber);
+	vector<Rect> groundTruths = chooseGroundTruths(imageNumber);
 
 	// 2. Load the Strong Classifier in a structure called `Cascade'
 	if( !cascade.load( cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
@@ -96,9 +96,9 @@ int main( int argc, const char** argv )
 }
 
 //function to select correct ground truths
-std::vector<Rect> chooseGroundTruths(int imageNumber)
+vector<Rect> chooseGroundTruths(int imageNumber)
 {
-	std::vector<std::vector<Rect> > allGroundTruths =
+	vector<vector<Rect> > allGroundTruths =
 	{
     {Rect(444,15,153,175)}, //0
 		{Rect(196,132,195,191)}, //1
@@ -118,15 +118,15 @@ std::vector<Rect> chooseGroundTruths(int imageNumber)
     {Rect(154,56,129,138)}, //15
 	};
 	//get ground truths
-	std::vector<Rect> groundTruths = allGroundTruths[imageNumber];
+	vector<Rect> groundTruths = allGroundTruths[imageNumber];
 	return groundTruths;
 }
 
 /** @function detectAndDisplay */
-std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
+vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 {
-	Mat frame_gray;
-	Mat sobelX;
+  Mat frame_gray;
+  Mat sobelX;
 	Mat sobelY;
   Mat sobelMag;
   Mat sobelGr;
@@ -148,6 +148,7 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 
 	//perform canny edge Detection
 	Canny(frame_gray, canny, 80, 40, 3);
+	imwrite("canny.jpg", canny);
 
 	GaussianBlur(canny, 4, cannyBlurred);
 
@@ -165,17 +166,20 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	circles.create(frame_gray.size(), frame_gray.type());
 	circles = frame_gray;
 
-	houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
-	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
+	houghCircle(canny, sobelGr, circles, houghSpaceCircle);
 
+	houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
+	imwrite("houghspacelines.jpg", houghSpaceLines);
 
-	printf("writing circles\n");
+	printf("writing houghspace\n");
+
+  imwrite("houghspacecircle.jpg", houghSpaceCircle);
   imwrite("circles.jpg", circles);
-	printf("finsihed\n");
-	//imwrite("canny.jpg", canny);
+  printf("finsihed\n");
+  //imwrite("canny.jpg", canny);
 
   // 3. Print number of dartboards found
-	std::cout << dartboards.size() << std::endl;
+  cout << dartboards.size() << endl;
 
   // 4. Draw box around dartboards found
 	for( int i = 0; i < dartboards.size(); i++ )
@@ -185,7 +189,7 @@ std::vector<Rect> detectAndDisplay( Mat frame , std::vector<Rect> dartboards )
 	return dartboards;
 }
 
-void thresholdMag(cv::Mat &input,int threshVal)
+void thresholdMag(Mat &input,int threshVal)
 {
 	for(int i = 0;i < input.rows;i++)
 	{
@@ -203,28 +207,30 @@ void thresholdMag(cv::Mat &input,int threshVal)
 	}
 }
 
-int*** malloc3dArray(int dim1, int dim2, int dim3)
+int*** create3dArray(int dim1, int dim2, int dim3)
 {
-	int i,j,k;
-	int*** array = (int ***)malloc(dim1*sizeof(int**));
+	int i,j;
+	int*** array = new int**[dim1];
 	for (i = 0; i< dim1; i++)
 	{
- 		array[i] = (int **) malloc(dim2*sizeof(int *));
+ 		array[i] = new int*[dim2];
 		for (j = 0; j < dim2; j++)
 		{
-			array[i][j] = (int *)malloc(dim3*sizeof(int));
+			array[i][j] = new int[dim3];
     }
   }
 	return array;
 }
 
-/*void houghLines(cv::Mat&sobelMag, cv::&sobelGrad, cv::&lines, cv::&houghSpaceLines)
+void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
-	space.create(sobelGrad.size(), sobelGrad.height());
-	houghSpace[sobelGrad.cols][sobelGrad.rows];
-	for(int i = 0; i < sobelGrad.cols; i++)
+	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
+	printf("max leng = %i\n", max_length);
+	houghSpaceLines.create(sobelGrad.size(), sobelGrad.type());
+	int houghSpace[max_length][180];
+	for(int i = 0; i < max_length; i++)
 	{
-		for(int j = 0; j < sobelGrad.rows; j++)
+		for(int j = 0; j < 180; j++)
 		{
 			houghSpace[i][j] = 0;
 		}
@@ -233,18 +239,62 @@ int*** malloc3dArray(int dim1, int dim2, int dim3)
 	{
 		for(int j = 0; j < sobelGrad.rows; j++)
 		{
-			houghSpaceLines.a
+			houghSpaceLines.at<uchar>(j,i) = 0;
+			int imageVal = sobelMag.at<uchar>(j,i);
+			float theta = sobelGrad.at<uchar>(j,i);
+			theta = (theta / 255) * 180;
+			if (imageVal == 255)
+			{
+				float tolerance = 5;
+				float gradient = theta;
+				float minGrad = gradient - tolerance;
+				if (minGrad < 0)
+				{
+					minGrad = 180 + minGrad;
+				}
+				float maxGrad = gradient + tolerance;
+				if(maxGrad > 180)
+				{
+					maxGrad = maxGrad - 180;
+				}
+				for(int k = 0; k < 180; k++)
+				{
+					if(k >= minGrad && k <= maxGrad)
+					{
+						int angle = k * (M_PI / 180);
+						float rho = i*cos(angle) + j*sin(angle);
+						if ((int)rho > max_length) {
+							printf("bad times rho == %i\n", (int)rho);
+						}
+						if (houghSpace[(int)rho][k] == 0)
+						{
+							houghSpace[(int)rho][k] += 1;
+						}
+						else
+						{
+							houghSpace[(int)rho][k] += 3;
+						}
+					}
+				}
+			}
 		}
 	}
-} */
+	for(int i = 0; i < max_length; i++)
+	{
+		for(int j = 0; j < 180; j++)
+		{
+			houghSpaceLines.at<uchar>(j,i) = houghSpace[i][j];
+		}
+	}
+}
 
-void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
+void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 {
 	float x, y, dx, dy;
 	int x1, y1, x2, y2;
 
 	space.create(edges.size(), edges.type());
-	int*** houghSpace = malloc3dArray(edges.cols, edges.rows, RADIUS_RANGE);
+	int*** houghSpace = create3dArray(edges.cols, edges.rows, RADIUS_RANGE);
 	for(int i = 0;i < edges.cols;i++)
 	{
 		for(int j = 0; j < edges.rows;j++)
@@ -270,7 +320,6 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 				theta = theta * (M_PI / 180);
 				if(imageVal == 255)
 				{
-					//printf("theta = %f, x = %i, y = % i\n", theta, i,j);
 					x = (r)*cos(theta);
 					y = (r)*sin(theta);
 					x1 = (int) (i + x); y1 = (int) (j + y);
@@ -283,7 +332,7 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 						}
 						else
 						{
-							houghSpace[x1][y1][r] += 3;
+							houghSpace[x1][y1][r] += 4;
 						}
 					}
 					if((x2 > 1) && (y2 > 1) && (x2 < edges.cols - 1) && (y2 < edges.rows - 1))
@@ -294,7 +343,7 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 						}
 						else
 						{
-							houghSpace[x2][y2][r] += 3;
+							houghSpace[x2][y2][r] += 4;
 						}
 					}
 				}
@@ -345,7 +394,7 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 				{
 					votes = (votes * 1000) / (highestVotes);
 				}
-				if(votes > 750)
+				if(votes > 500)
 				{
 					int radius = k+ MIN_RAD;
 					grey.at<uchar>(j,i) = 40;
@@ -372,11 +421,10 @@ void houghCircle(cv::Mat &edges,cv::Mat &thetas,cv::Mat &grey,cv:: Mat &space)
 			space.at<uchar>(j, i) = (uchar) imval;
 		}
 	}
-	printf("writing houghspace\n");
-	imwrite("houghspacecircle.jpg", space);
+	delete[] houghSpace;
 }
 
-void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, cv::Mat &sobelGr)
+void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr)
 {
 	sobelX.create(input.size(), input.type());
 	sobelY.create(input.size(), input.type());
@@ -387,8 +435,8 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 	int yKernel[3][3] = {{1,2,1},{0,0,0},{-1,-2,-1}};
 
 
-	cv::Mat paddedInput;
-	cv::copyMakeBorder( input, paddedInput, 1, 1, 1, 1,cv::BORDER_REPLICATE);
+	Mat paddedInput;
+	copyMakeBorder( input, paddedInput, 1, 1, 1, 1,BORDER_REPLICATE);
 
 	for (int i = 0; i < input.rows;i++)
 	{
@@ -445,7 +493,7 @@ void sobel(cv::Mat &input, cv::Mat &sobelX, cv::Mat &sobelY, cv::Mat &sobelMag, 
 	}
 }
 
-float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths)
+float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 {
 	float tpr = 0;
 	float tp = 0;
@@ -511,27 +559,27 @@ float f1( std::vector<Rect> dartboards, std::vector<Rect> groundTruths)
 	return f1Score;
 }
 
-void GaussianBlur(cv::Mat &input, int size, cv::Mat &blurredOutput)
+void GaussianBlur(Mat &input, int size, Mat &blurredOutput)
 {
 	// intialise the output using the input
 	blurredOutput.create(input.size(), input.type());
 
 	// create the Gaussian kernel in 1D
-	cv::Mat kX = cv::getGaussianKernel(size, -1);
-	cv::Mat kY = cv::getGaussianKernel(size, -1);
+	Mat kX = getGaussianKernel(size, -1);
+	Mat kY = getGaussianKernel(size, -1);
 
 	// make it 2D multiply one by the transpose of the other
-	cv::Mat kernel = kX * kY.t();
+	Mat kernel = kX * kY.t();
 
 	// we need to create a padded version of the input
 	// or there will be border effects
 	int kernelRadiusX = ( kernel.size[0] - 1 ) / 2;
 	int kernelRadiusY = ( kernel.size[1] - 1 ) / 2;
 
-	cv::Mat paddedInput;
-	cv::copyMakeBorder( input, paddedInput,
+	Mat paddedInput;
+	copyMakeBorder( input, paddedInput,
 		kernelRadiusX, kernelRadiusX, kernelRadiusY, kernelRadiusY,
-		cv::BORDER_REPLICATE );
+		BORDER_REPLICATE );
 
 	// now we can do the convoltion
 	for ( int i = 0; i < input.rows; i++ )
