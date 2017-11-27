@@ -246,7 +246,11 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 			if (imageVal == 255)
 			{
 				float tolerance = 5;
-				float gradient = theta;
+				float gradient = theta + 90;
+				if (gradient > 180)
+				{
+					gradient = gradient - 180;
+				}
 				float minGrad = gradient - tolerance;
 				if (minGrad < 0)
 				{
