@@ -137,6 +137,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	Mat houghSpaceCircle;
 	Mat lines;
 	Mat houghSpaceLines;
+	Mat labColours[3];
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
@@ -380,15 +381,15 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 	{
 		for(int j = 1; j < edges.rows - 1;j++)
 		{
-			int imval = 0;
-			imval = space.at<uchar>(j,i);
+			int imvalPrime = 0;
+			imvalPrime = space.at<uchar>(j,i);
 			int bestCirc[4] = {};
 			int concentric[2] = {};
 			for(int k = 0;k < RADIUS_RANGE;k++)
 			{
 				int votes = 0;
-				imval += houghSpace[i][j][k]*1;
-				if(imval > 255)imval = 255;
+				imvalPrime += houghSpace[i][j][k]*1;
+				if(imvalPrime > 255)imvalPrime = 255;
 				votes += houghSpace[i][j][k];
 				votes += houghSpace[i+1][j][k];
 				votes += houghSpace[i-1][j][k];
@@ -411,7 +412,9 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 			}
 			// Bigger cicle = bestcirc radius*1.5 -> max radius
 			//Smaller circle = bestcirc radius*2/3 -> min radius
-			for(int k = 0;k < (bestCirc[3]-MIN_RAD)*(2/3);k++)
+		/*int imval = 0;
+		imval = space.at<uchar>(j,i);
+		 for(int k = 0;k < (bestCirc[3]-MIN_RAD)*(2/3);k++)
 			{
 				int votes = 0;
 				imval += houghSpace[i][j][k]*1;
@@ -434,6 +437,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					}
 				}
 			}
+			imval = 0;
+			imval = space.at<uchar>(j,i);
 			for(int k = (bestCirc[3]-MIN_RAD)*1.5;k < RADIUS_RANGE;k++)
 			{
 				int votes = 0;
@@ -479,6 +484,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					}
 				}
 			}
+			printf("concentric rad %d \n",concentric[1]);
 			for(int y = -(concentric[1]);y < (concentric[1]+1);y++)
 			{
 				for(int x = -(concentric[1]);x < (concentric[1]+1);x++)
@@ -492,8 +498,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						}
 					}
 				}
-			}
-			space.at<uchar>(j, i) = (uchar) imval;
+			}*/
+			space.at<uchar>(j, i) = (uchar) imvalPrime;
 		}
 	}
 	delete[] houghSpace;
