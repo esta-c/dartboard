@@ -396,254 +396,267 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 		}
 	}
 	printf("%d \n", highestVotes);
-	for(int i = 1; i < edges.cols - 1;i++)
-	{
-		for(int j = 1; j < edges.rows - 1;j++)
-		{
-			int imvalPrime = 0;
-			imvalPrime = space.at<uchar>(j,i);
-			for(int k = 0;k < RADIUS_RANGE;k++){
-				imvalPrime += houghSpace[i][j][k];
-				if(imvalPrime > 255)imvalPrime = 255;
-			}
-			//if(!regionDoone){
-				int bestCirc[4] = {0,0,0,0};
-				int concentric[2] = {0,0};
-				int center[9] = {0,0,0,0,0,0,0,0,0};
-				for(int k = 0;k < RADIUS_RANGE;k++)
-				{
-					int votes = 0;		
-					votes += houghSpace[i][j][k];//0 0
-					center[4] += houghSpace[i][j][k]; 
-					if(k > 0/*RADIUS_RANGE/2 + 10*/){
-						if(i+1 <= edges.cols){
-							votes += houghSpace[i+1][j][k]; //1 0
-							center[5] += houghSpace[i+1][j][k];
-							if(j-1 >= 0){
-								votes += houghSpace[i+1][j-1][k];//1 - 1
-								center[2] += houghSpace[i+1][j-1][k];
-							}else if(j+1 <= edges.rows){
-								votes += houghSpace[i+1][j+1][k];// 1 1
-								center[8] += houghSpace[i+1][j+1][k];
-							}	
-						}
-						if(j+1 <= edges.rows){
-							votes += houghSpace[i][j+1][k];	//0 1
-							center[7] += houghSpace[i][j+1][k];
-						}
-						if(i-1 >= 0){
-							votes += houghSpace[i-1][j][k]; // -1 0
-							center[3] += houghSpace[i-1][j][k];
-							if(j-1 >= 0){
-								votes += houghSpace[i-1][j-1][k];//-1 -1
-								center[0]+= houghSpace[i-1][j-1][k];
-							}else if(j+1 <= edges.rows){
-								votes += houghSpace[i-1][j+1][k];// -1 1
-								center[6] += houghSpace[i-1][j+1][k];
-							}	
-						}
-						if(j-1 >= 0){
-							votes += houghSpace[i][j-1][k];	// 0 -1
-							center[1] += houghSpace[i][j-1][k];
-						}
-					}
-					if (votes != 0)
+	int chunkRat = 5;
+	int chunkY = edges.rows/chunkRat;
+	int chunkX = edges.cols/chunkRat;
+	//printf("chunked %d  %d \n",chunkX,chunkY);
+	//printf("rows %d  Cols %d \n",edges.rows,edges.cols);
+	for(int m = 0;m < chunkRat+1;m++){
+		for(int n = 0;n < chunkRat+1;n++){
+			//printf("current chunks: %d  %d",n, m);
+			int bestBestCirc[5] = {0,0,0,0,0};
+			for(int j = 0 + chunkY*m; j < chunkY*(m+1);j++)
+			{
+				if(j < edges.rows-1){
+					for(int i = 0 + chunkX*n; i < chunkX*(n+1);i++)
 					{
-						votes = (votes * 100) / (highestVotes);
-					}
-					if(votes > 90)
-					{
-						if (votes > bestCirc[0])
-						{
-							int cx,cy;
-							int index = getIndexOfLargestElement(center,9);
-							printf("%d  \n", index);
-							switch(index){
-								case 0:
-									cx = i-1;
-									cy = j-1; 
-									break;
-								case 1:
-									cx = i;
-									cy = j-1;
-									break;
-								case 2:
-									cx = i+1;
-									cy = j-1;
-									break;
-								case 3:
-									cx = i-1;
-									cy = j;
-									break;
-								case 4:
-									cx = i;
-									cy = j;
-									break;
-								case 5:
-									cx = i+1;
-									cy = j;
-									break;
-								case 6:
-									cx = i-1;
-									cy = j+1;
-									break;
-								case 7:
-									cx = i;
-									cy = j+1;
-									break;
-								case 8:
-									cx = i+1;
-									cy = j+1;
-									break;
+						//printf("i  %d j  %d\n",i,j );
+						if(i < edges.cols-1){
+							int imvalPrime = 0;
+							imvalPrime = space.at<uchar>(j,i);
+							for(int k = 0;k < RADIUS_RANGE;k++){
+								imvalPrime += houghSpace[i][j][k];
+								if(imvalPrime > 255)imvalPrime = 255;
 							}
-							bestCirc[0] = votes;
-							bestCirc[1] = cx;
-							bestCirc[2] = cy;
-							bestCirc[3] = k+MIN_RAD;
-						}
-					}
-				}
-				// Bigger cicle = bestcirc radius*1.5 -> max radius
-				//Smaller circle = bestcirc radius*2/3 -> min radius
-				if(bestCirc[0] > 0){
-					regionDoone = true;
-					//printf("looking for concentric\n");
-					int smallerCirc = (bestCirc[3]-MIN_RAD)*2/3;
-					int biggerCirc = (bestCirc[3]-MIN_RAD)*1.5;
-					//printf("%d bigger circ\n",biggerCirc);
-				 	for(int k = 0;k < smallerCirc;k++)
-					{
-						//printf("smaller \n");
-						int votes = 0;
-						votes += houghSpace[i][j][k];
-						if(k > RADIUS_RANGE/2){
-							if(i+1 <= edges.cols){
-								votes += houghSpace[i+1][j][k]; //1 0
-								if(j-1 >= 0){
-									votes += houghSpace[i+1][j-1][k];//1 - 1
-								}else if(j+1 <= edges.rows){
-									votes += houghSpace[i+1][j+1][k];// 1 1
-								}	
-							}
-							if(j+1 <= edges.rows){
-								votes += houghSpace[i][j+1][k];	//0 1
-							}
-							if(i-1 >= 0){
-								votes += houghSpace[i-1][j][k]; // -1 0
-								if(j-1 >= 0){
-									votes += houghSpace[i-1][j-1][k];//-1 -1
-								}else if(j+1 <= edges.rows){
-									votes += houghSpace[i-1][j+1][k];// -1 1
-								}	
-							}
-							if(j-1 >= 0){
-								votes += houghSpace[i][j-1][k];	// 0 -1
-							}
-						}
-						if (votes != 0)
-						{
-							votes = (votes * 100) / (highestVotes);
-						}
-						if(votes > 10)
-						{
-							if (votes > concentric[0])
+							space.at<uchar>(j, i) = (uchar) imvalPrime;
+							int bestCirc[4] = {0,0,0,0};
+							int concentric[2] = {0,0};
+							int center[9] = {0,0,0,0,0,0,0,0,0};
+							for(int k = 0;k < RADIUS_RANGE;k++)
 							{
-								concentric[0] = votes;
-								concentric[1] = k+MIN_RAD;
-							}
-						}
-					}
-					for(int k = biggerCirc;k < RADIUS_RANGE;k++)
-					{
-						//printf("bigger \n");
-						int votes = 0;
-						votes += houghSpace[i][j][k];
-						if(k > RADIUS_RANGE/2){
-							if(i+1 <= edges.cols){
-								votes += houghSpace[i+1][j][k]; //1 0
-								if(j-1 >= 0){
-									votes += houghSpace[i+1][j-1][k];//1 - 1
-								}else if(j+1 <= edges.rows){
-									votes += houghSpace[i+1][j+1][k];// 1 1
-								}	
-							}
-							if(j+1 <= edges.rows){
-								votes += houghSpace[i][j+1][k];	//0 1
-							}
-							if(i-1 >= 0){
-								votes += houghSpace[i-1][j][k]; // -1 0
-								if(j-1 >= 0){
-									votes += houghSpace[i-1][j-1][k];//-1 -1
-								}else if(j+1 <= edges.rows){
-									votes += houghSpace[i-1][j+1][k];// -1 1
-								}	
-							}
-							if(j-1 >= 0){
-								votes += houghSpace[i][j-1][k];	// 0 -1
-							}
-						}
-						if (votes != 0)
-						{
-							votes = (votes * 100) / (highestVotes);
-						}
-						if(votes > 10)
-						{
-							if (votes > concentric[0])
-							{
-								concentric[0] = votes;
-								concentric[1] = k+MIN_RAD;
-							}
-						}
-					}
-					int bestCircX = bestCirc[1];
-					int bestCircY = bestCirc[2];
-					int bestCircRad = bestCirc[3];
-					if(bestCircRad != 0){
-						grey.at<uchar>(bestCircY,bestCircX) = 40;
-						grey.at<uchar>(bestCircY,bestCircX-1) = 40;
-						grey.at<uchar>(bestCircY,bestCircX+1) = 40;
-						grey.at<uchar>(bestCircY-1,bestCircX) = 40;
-						grey.at<uchar>(bestCircY+1,bestCircX) = 40;
-						for(int y = -(bestCircRad);y < (bestCircRad+1);y++)
-						{
-							for(int x = -(bestCircRad);x < (bestCircRad+1);x++)
-							{
-								if(sqrt((x*x) + (y*y)) <= (bestCircRad) && sqrt((x*x) + (y*y)) > (bestCircRad-1))
+								int votes = 0;		
+								votes += houghSpace[i][j][k];//0 0
+								center[4] += houghSpace[i][j][k]; 
+								if(k > 0/*RADIUS_RANGE/2 + 10*/){
+									if(i+1 <= edges.cols){
+										votes += houghSpace[i+1][j][k]; //1 0
+										center[5] += houghSpace[i+1][j][k];
+										if(j-1 >= 0){
+											votes += houghSpace[i+1][j-1][k];//1 - 1
+											center[2] += houghSpace[i+1][j-1][k];
+										}else if(j+1 <= edges.rows){
+											votes += houghSpace[i+1][j+1][k];// 1 1
+											center[8] += houghSpace[i+1][j+1][k];
+										}	
+									}
+									if(j+1 <= edges.rows){
+										votes += houghSpace[i][j+1][k];	//0 1
+										center[7] += houghSpace[i][j+1][k];
+									}
+									if(i-1 >= 0){
+										votes += houghSpace[i-1][j][k]; // -1 0
+										center[3] += houghSpace[i-1][j][k];
+										if(j-1 >= 0){
+											votes += houghSpace[i-1][j-1][k];//-1 -1
+											center[0]+= houghSpace[i-1][j-1][k];
+										}else if(j+1 <= edges.rows){
+											votes += houghSpace[i-1][j+1][k];// -1 1
+											center[6] += houghSpace[i-1][j+1][k];
+										}	
+									}
+									if(j-1 >= 0){
+										votes += houghSpace[i][j-1][k];	// 0 -1
+										center[1] += houghSpace[i][j-1][k];
+									}
+								}
+								if (votes != 0)
 								{
-									if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
-									else
+									votes = (votes * 100) / (highestVotes);
+								}
+								if(votes > 90)
+								{
+									if (votes > bestCirc[0])
 									{
-										grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+										int cx,cy;
+										int index = getIndexOfLargestElement(center,9);
+										//printf("%d  \n", index);
+										switch(index){
+											case 0:
+												cx = i-1;
+												cy = j-1; 
+												break;
+											case 1:
+												cx = i;
+												cy = j-1;
+												break;
+											case 2:
+												cx = i+1;
+												cy = j-1;
+												break;
+											case 3:
+												cx = i-1;
+												cy = j;
+												break;
+											case 4:
+												cx = i;
+												cy = j;
+												break;
+											case 5:
+												cx = i+1;
+												cy = j;
+												break;
+											case 6:
+												cx = i-1;
+												cy = j+1;
+												break;
+											case 7:
+												cx = i;
+												cy = j+1;
+												break;
+											case 8:
+												cx = i+1;
+												cy = j+1;
+												break;
+										}
+										bestCirc[0] = votes;
+										bestCirc[1] = cx;
+										bestCirc[2] = cy;
+										bestCirc[3] = k+MIN_RAD;
 									}
 								}
 							}
-						}
-					}
-					//if(bestCirc[3] > 0){printf("best circ %d ",bestCirc[3] );printf("concentric %d \n",concentric[1]);}
-					for(int y = -(concentric[1]);y < (concentric[1]+1);y++)
-					{
-						for(int x = -(concentric[1]);x < (concentric[1]+1);x++)
-						{
-							if(sqrt((x*x) + (y*y)) <= (concentric[1]) && sqrt((x*x) + (y*y)) > (concentric[1]-1))
-							{
-								if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
-								else
+							// Bigger cicle = bestcirc radius*1.5 -> max radius
+							//Smaller circle = bestcirc radius*2/3 -> min radius
+							if(bestCirc[0] > 0){
+								regionDoone = true;
+								//printf("looking for concentric\n");
+								int smallerCirc = (bestCirc[3]-MIN_RAD)*4/5;
+								int biggerCirc = (bestCirc[3]-MIN_RAD)*1.1;
+								//printf("%d bigger circ\n",biggerCirc);
+							 	for(int k = 0;k < smallerCirc;k++)
 								{
-									grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+									//printf("smaller \n");
+									int votes = 0;
+									votes += houghSpace[i][j][k];
+									if(k > RADIUS_RANGE/2){
+										if(i+1 <= edges.cols){
+											votes += houghSpace[i+1][j][k]; //1 0
+											if(j-1 >= 0){
+												votes += houghSpace[i+1][j-1][k];//1 - 1
+											}else if(j+1 <= edges.rows){
+												votes += houghSpace[i+1][j+1][k];// 1 1
+											}	
+										}
+										if(j+1 <= edges.rows){
+											votes += houghSpace[i][j+1][k];	//0 1
+										}
+										if(i-1 >= 0){
+											votes += houghSpace[i-1][j][k]; // -1 0
+											if(j-1 >= 0){
+												votes += houghSpace[i-1][j-1][k];//-1 -1
+											}else if(j+1 <= edges.rows){
+												votes += houghSpace[i-1][j+1][k];// -1 1
+											}	
+										}
+										if(j-1 >= 0){
+											votes += houghSpace[i][j-1][k];	// 0 -1
+										}
+									}
+									if (votes != 0)
+									{
+										votes = (votes * 100) / (highestVotes);
+									}
+									if(votes > 10)
+									{
+										if (votes > concentric[0])
+										{
+											concentric[0] = votes;
+											concentric[1] = k+MIN_RAD;
+										}
+									}
+								}
+								for(int k = biggerCirc;k < RADIUS_RANGE;k++)
+								{
+									//printf("bigger \n");
+									int votes = 0;
+									votes += houghSpace[i][j][k];
+									if(k > RADIUS_RANGE/2){
+										if(i+1 <= edges.cols){
+											votes += houghSpace[i+1][j][k]; //1 0
+											if(j-1 >= 0){
+												votes += houghSpace[i+1][j-1][k];//1 - 1
+											}else if(j+1 <= edges.rows){
+												votes += houghSpace[i+1][j+1][k];// 1 1
+											}	
+										}
+										if(j+1 <= edges.rows){
+											votes += houghSpace[i][j+1][k];	//0 1
+										}
+										if(i-1 >= 0){
+											votes += houghSpace[i-1][j][k]; // -1 0
+											if(j-1 >= 0){
+												votes += houghSpace[i-1][j-1][k];//-1 -1
+											}else if(j+1 <= edges.rows){
+												votes += houghSpace[i-1][j+1][k];// -1 1
+											}	
+										}
+										if(j-1 >= 0){
+											votes += houghSpace[i][j-1][k];	// 0 -1
+										}
+									}
+									if (votes != 0)
+									{
+										votes = (votes * 100) / (highestVotes);
+									}
+									if(votes > 10)
+									{
+										if (votes > concentric[0])
+										{
+											concentric[0] = votes;
+											concentric[1] = k+MIN_RAD;
+										}
+									}
+								}
+								if(bestCirc[0] > bestBestCirc[0]){
+									bestBestCirc[0] = bestCirc[0];
+									bestBestCirc[1] = bestCirc[1];
+									bestBestCirc[2] = bestCirc[2];
+									bestBestCirc[3] = bestCirc[3];
+									bestBestCirc[4] = concentric[1];
 								}
 							}
 						}
 					}
 				}
-			//}else{
-			//	regionShiftx++;
-			//	if(regionShiftx > 30  && regionShifty > 30){regionDoone = false;regionShifty = 0;regionShifty = 0;}
-			//}
-			space.at<uchar>(j, i) = (uchar) imvalPrime;
+			}
+			if(bestBestCirc[0] != 0){
+				grey.at<uchar>(bestBestCirc[2],bestBestCirc[1]) = 40;
+				grey.at<uchar>(bestBestCirc[2]-1,bestBestCirc[1]) = 40;
+				grey.at<uchar>(bestBestCirc[2]+1,bestBestCirc[1]) = 40;
+				grey.at<uchar>(bestBestCirc[2],bestBestCirc[1]-1) = 40;
+				grey.at<uchar>(bestBestCirc[2],bestBestCirc[1]+1) = 40;
+				for(int y = -(bestBestCirc[3]);y < (bestBestCirc[3]+1);y++)
+				{
+					for(int x = -(bestBestCirc[3]);x < (bestBestCirc[3]+1);x++)
+					{
+						if(sqrt((x*x) + (y*y)) <= (bestBestCirc[3]) && sqrt((x*x) + (y*y)) > (bestBestCirc[3]-1))
+						{
+							if (bestBestCirc[1]+x < 0 || bestBestCirc[1]+x > edges.cols || bestBestCirc[2]+y < 0 || bestBestCirc[2]+y > edges.rows){ }
+							else
+							{
+								grey.at<uchar>(bestBestCirc[2] + y, bestBestCirc[1] + x) = 255;
+							}
+						}
+					}
+				}
+				//if(bestCirc[3] > 0){printf("best circ %d ",bestCirc[3] );printf("concentric %d \n",concentric[1]);}
+				for(int y = -(bestBestCirc[4]);y < (bestBestCirc[4]+1);y++)
+				{
+					for(int x = -(bestBestCirc[4]);x < (bestBestCirc[4]+1);x++)
+					{
+						if(sqrt((x*x) + (y*y)) <= (bestBestCirc[4]) && sqrt((x*x) + (y*y)) > (bestBestCirc[4]-1))
+						{
+							if (bestBestCirc[1]+x < 0 || bestBestCirc[1]+x > edges.cols || bestBestCirc[2]+y < 0 || bestBestCirc[2]+y > edges.rows){ }
+							else
+							{
+								grey.at<uchar>(bestBestCirc[2] + y, bestBestCirc[1] + x) = 255;
+							}
+						}
+					}
+				}
+			}
+			//printf("one chunnk \n");
 		}
-		//if(regionDoone){
-		//	regionShifty++;
-		//}
 	}
 	delete[] houghSpace;
 }
