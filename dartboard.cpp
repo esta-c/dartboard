@@ -16,9 +16,9 @@
 #include <math.h>
 #include <numeric>
 
-#define MIN_RAD 23
-#define MAX_RAD 125
-#define RADIUS_RANGE 76
+#define MIN_RAD 23 //23
+#define MAX_RAD 125 //125
+#define RADIUS_RANGE 103
 
 //circle tester
 /*#define MIN_RAD 160
@@ -51,15 +51,18 @@ void GaussianBlur(Mat &input,
 void thresholdMag(Mat &input,
 							 		int threshVal);
 
-void houghCircle(Mat &edges,
-								 Mat &thetas,
-								 Mat &grey,
-								 Mat &space);
+vector<pair <int,int> > houghCircle(Mat &edges,
+								 										Mat &thetas,
+								 										Mat &grey,
+								 										Mat &space);
 
 void houghLines(Mat&sobelMag,
 								Mat&sobelGrad,
 								Mat&lines,
 								Mat&houghSpaceLines);
+
+vector<Rect> refineDartboards(vector<Rect> dartboards,
+															vector<pair <int,int> > circleCentres);
 
 /** Global variables */
 String cascade_name = "cascade.xml";
@@ -73,8 +76,12 @@ int main( int argc, const char** argv )
   // 1. Read Input Image
 	Mat frame = imread(argv[1], CV_LOAD_IMAGE_COLOR);
 
-	//Get the image number and gTNumber
-	imageNumber = atoi (argv[2]);
+	//Get the image number from the name
+	string imageFileName = argv[1];
+	int startDigit = imageFileName.find_first_of("0123456789");
+	int endDigit = imageFileName.find_first_of(".");
+	string imageNumberString = imageFileName.substr(startDigit, (endDigit-startDigit));
+	int imageNumber = atoi(imageNumberString.c_str());
 
 	vector<Rect> groundTruths = chooseGroundTruths(imageNumber);
 
@@ -137,7 +144,6 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	Mat houghSpaceCircle;
 	Mat lines;
 	Mat houghSpaceLines;
-	Mat labColours[3];
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
@@ -167,7 +173,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	circles.create(frame_gray.size(), frame_gray.type());
 	circles = frame_gray;
 
-	houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
+	vector<pair<int,int> > circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
 	//imwrite("houghspacelines.jpg", houghSpaceLines);
@@ -176,18 +182,18 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
   imwrite("houghspacecircle.jpg", houghSpaceCircle);
   imwrite("circles.jpg", circles);
-  printf("finsihed\n");
   //imwrite("canny.jpg", canny);
 
   // 3. Print number of dartboards found
   cout << dartboards.size() << endl;
 
   // 4. Draw box around dartboards found
-	for( int i = 0; i < dartboards.size(); i++ )
+	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
+	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
-		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
+		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
 	}
-	return dartboards;
+	return acceptedDartboards;
 }
 
 void thresholdMag(Mat &input,int threshVal)
@@ -223,10 +229,28 @@ int*** create3dArray(int dim1, int dim2, int dim3)
 	return array;
 }
 
+vector<Rect> refineDartboards(vector<Rect> dartboards, vector<pair <int,int> > circleCentres)
+{
+	vector<Rect> acceptedDartboards;
+	for (int i = 0; i < dartboards.size(); i++)
+	{
+		for(int j = 0; j < circleCentres.size(); j++)
+		{
+			Rect centralRegion = Rect((dartboards[i].x + dartboards[i].width/4), (dartboards[i].y + dartboards[i].height/4), (dartboards[i].width/2), (dartboards[i].height/2));
+			int x = circleCentres[j].first;
+			int y = circleCentres[j].second;
+			if(x > centralRegion.x && x < (centralRegion.x+centralRegion.width) && y > centralRegion.y && y < (centralRegion.y + centralRegion.height))
+			{
+				acceptedDartboards.push_back(dartboards[i]);
+			}
+		}
+	}
+	return acceptedDartboards;
+}
+
 void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
 	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
-	printf("max leng = %i\n", max_length);
 	houghSpaceLines.create(max_length, 900, sobelMag.type());
 	int houghSpace[max_length][180];
 	for(int i = 0; i < max_length; i++)
@@ -289,11 +313,14 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 		}
 	}
 
-int getIndexOfLargestElement(int arr[], int size) {
+int getIndexOfLargestElement(int arr[], int size)
+{
     int largestIndex = 0;
-    for (int index = largestIndex; index < size; index++) {
-    	printf("%d \n",arr[index]);
-        if (arr[largestIndex] < arr[index]) {
+    for (int index = largestIndex; index < size; index++)
+		{
+    	//printf("%d \n",arr[index]);
+        if (arr[largestIndex] < arr[index])
+				{
             largestIndex = index;
         }
     }
@@ -301,7 +328,7 @@ int getIndexOfLargestElement(int arr[], int size) {
 }
 
 
-void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
+vector<pair <int,int> > houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 {
 	float x, y, dx, dy;
 	int x1, y1, x2, y2;
@@ -369,7 +396,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					if(i+1 <= edges.cols)
 					{
 						votes += houghSpace[i+1][j][k]; //1 0
-						if(j-1 >= 0){
+						if(j-1 >= 0)
+						{
 							votes += houghSpace[i+1][j-1][k];//1 - 1
 						}
 						else if(j+1 <= edges.rows)
@@ -411,8 +439,11 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 	int chunkX = edges.cols/chunkRat;
 	//printf("chunked %d  %d \n",chunkX,chunkY);
 	//printf("rows %d  Cols %d \n",edges.rows,edges.cols);
-	for(int m = 0;m < chunkRat+1;m++){
-		for(int n = 0;n < chunkRat+1;n++){
+	vector<pair<int,int> > finalCentres;
+	for(int m = 0;m < chunkRat+1;m++)
+	{
+		for(int n = 0;n < chunkRat+1;n++)
+		{
 			//printf("current chunks: %d  %d",n, m);
 			int bestBestCirc[5] = {0,0,0,0,0};
 			for(int j = 0 + chunkY*m; j < chunkY*(m+1);j++)
@@ -424,7 +455,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						if(i < edges.cols-1){
 							int imvalPrime = 0;
 							imvalPrime = space.at<uchar>(j,i);
-							for(int k = 0;k < RADIUS_RANGE;k++){
+							for(int k = 0;k < RADIUS_RANGE;k++)
+							{
 								imvalPrime += houghSpace[i][j][k];
 								if(imvalPrime > 255)imvalPrime = 255;
 							}
@@ -437,29 +469,39 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 								int votes = 0;
 								votes += houghSpace[i][j][k];//0 0
 								center[4] += houghSpace[i][j][k];
-								if(k > 0/*RADIUS_RANGE/2 + 10*/){
-									if(i+1 <= edges.cols){
+								if(k > 0/*RADIUS_RANGE/2 + 10*/)
+								{
+									if(i+1 <= edges.cols)
+									{
 										votes += houghSpace[i+1][j][k]; //1 0
 										center[5] += houghSpace[i+1][j][k];
-										if(j-1 >= 0){
+										if(j-1 >= 0)
+										{
 											votes += houghSpace[i+1][j-1][k];//1 - 1
 											center[2] += houghSpace[i+1][j-1][k];
-										}else if(j+1 <= edges.rows){
+										}
+										else if(j+1 <= edges.rows)
+										{
 											votes += houghSpace[i+1][j+1][k];// 1 1
 											center[8] += houghSpace[i+1][j+1][k];
 										}
 									}
-									if(j+1 <= edges.rows){
+									if(j+1 <= edges.rows)
+									{
 										votes += houghSpace[i][j+1][k];	//0 1
 										center[7] += houghSpace[i][j+1][k];
 									}
-									if(i-1 >= 0){
+									if(i-1 >= 0)
+									{
 										votes += houghSpace[i-1][j][k]; // -1 0
 										center[3] += houghSpace[i-1][j][k];
-										if(j-1 >= 0){
+										if(j-1 >= 0)
+										{
 											votes += houghSpace[i-1][j-1][k];//-1 -1
 											center[0]+= houghSpace[i-1][j-1][k];
-										}else if(j+1 <= edges.rows){
+										}
+										else if(j+1 <= edges.rows)
+										{
 											votes += houghSpace[i-1][j+1][k];// -1 1
 											center[6] += houghSpace[i-1][j+1][k];
 										}
@@ -690,11 +732,15 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						}
 					}
 				}
+				//add this best circle to the list to return
+				pair<int,int> bestCircleCentre (bestBestCirc[1], bestBestCirc[2]);
+				finalCentres.push_back(bestCircleCentre);
 			}
 			//printf("one chunnk \n");
 		}
 	}
 	delete[] houghSpace;
+	return finalCentres;
 }
 
 void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr)
@@ -807,7 +853,7 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 	{
 		detectedDartboards += boardCount[i];
 	}
-	printf("Detected Dartboards%i\n", detectedDartboards);
+	//printf("Detected Dartboards%i\n", detectedDartboards);
 	float fn = (float)groundTruths.size() - (float)detectedDartboards;
 	//tpr
 	tpr = detectedDartboards;
@@ -825,9 +871,9 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 	{
 		f1Score = 2*(( precision * recall ) / (precision + recall));
 	 }
-	 printf("TP = %f\n", tp);
-	 printf("FP = %f\n", fp);
-	 printf("FN = %f\n", fn);
+	// printf("TP = %f\n", tp);
+	// printf("FP = %f\n", fp);
+	// printf("FN = %f\n", fn);
 	//add f1Score to total
 	return f1Score;
 }
