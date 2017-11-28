@@ -226,7 +226,7 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
 	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
 	printf("max leng = %i\n", max_length);
-	houghSpaceLines.create(sobelGrad.size(), sobelGrad.type());
+	houghSpaceLines.create(sobelMag.size(), sobelMag.type());
 	int houghSpace[max_length][180];
 	for(int i = 0; i < max_length; i++)
 	{
@@ -239,13 +239,12 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 	{
 		for(int j = 0; j < sobelGrad.rows; j++)
 		{
-			houghSpaceLines.at<uchar>(j,i) = 0;
 			int imageVal = sobelMag.at<uchar>(j,i);
 			float theta = sobelGrad.at<uchar>(j,i);
 			theta = (theta / 255) * 180;
 			if (imageVal == 255)
 			{
-				float tolerance = 5;
+				float tolerance = 20;
 				float gradient = theta + 90;
 				if (gradient > 180)
 				{
@@ -267,9 +266,6 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 					{
 						int angle = k * (M_PI / 180);
 						float rho = i*cos(angle) + j*sin(angle);
-						if ((int)rho > max_length) {
-							printf("bad times rho == %i\n", (int)rho);
-						}
 						if (houghSpace[(int)rho][k] == 0)
 						{
 							houghSpace[(int)rho][k] += 1;
@@ -287,7 +283,15 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 	{
 		for(int j = 0; j < 180; j++)
 		{
-			houghSpaceLines.at<uchar>(j,i) = houghSpace[i][j];
+			int imval = houghSpace[i][j];
+			float radians = j*(M_PI/180);
+			for(int k = 0; k < 180; k++)
+			{
+				float x = i*cos(radians);
+				float y = i*sin(radians);
+				houghSpaceLines.at<uchar>(y,x) = imval;
+			}
+
 		}
 	}
 }
