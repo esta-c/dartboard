@@ -16,7 +16,7 @@
 #include <math.h>
 #include <numeric>
 
-#define MIN_RAD 25
+#define MIN_RAD 23
 #define MAX_RAD 125
 #define RADIUS_RANGE 76
 
@@ -151,7 +151,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	Canny(frame_gray, canny, 80, 40, 3);
 	imwrite("canny.jpg", canny);
 
-	GaussianBlur(canny, 2, cannyBlurred);
+	GaussianBlur(canny, 4, cannyBlurred);
 
 	//2.5 Perform sobel transform
 	sobel(cannyBlurred,sobelX,sobelY,sobelMag,sobelGr);
@@ -295,13 +295,16 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 {
 	float x, y, dx, dy;
 	int x1, y1, x2, y2;
-
+	bool regionDoone = false;
+	int regionShiftx = 0;
+	int regionShifty = 0;
 	space.create(edges.size(), edges.type());
 	int*** houghSpace = create3dArray(edges.cols, edges.rows, RADIUS_RANGE);
 	for(int i = 0;i < edges.cols;i++)
 	{
 		for(int j = 0; j < edges.rows;j++)
 		{
+			space.at<uchar>(j,i) = 0;
 			for(int k = 0;k < RADIUS_RANGE;k++)
 			{
 				houghSpace[i][j][k] = 0;
@@ -313,7 +316,6 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 	{
 		for(int j = 0;j < edges.rows;j++)
 		{
-			space.at<uchar>(j,i) = 0;
 			for(int k = 0;k < RADIUS_RANGE;k++)
 			{
 				int r = k+MIN_RAD;
@@ -329,25 +331,11 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					x2 = (int) (i - x); y2 = (int) (j - y);
 					if((x1 > 1) && (y1 > 1) && (x1 < edges.cols - 1) && (y1 < edges.rows - 1))
 					{
-						if(houghSpace[x1][y1][r] == 0)
-						{
-							houghSpace[x1][y1][r] += 1;
-						}
-						else
-						{
-							houghSpace[x1][y1][r] *= 2;
-						}
+						houghSpace[x1][y1][r] += 1;
 					}
 					if((x2 > 1) && (y2 > 1) && (x2 < edges.cols - 1) && (y2 < edges.rows - 1))
 					{
-						if(houghSpace[x2][y2][r] == 0)
-						{
-							houghSpace[x2][y2][r] += 1;
-						}
-						else
-						{
-							houghSpace[x2][y2][r] *= 2;
-						}
+						houghSpace[x2][y2][r] += 1;
 					}
 				}
 			}
@@ -358,21 +346,41 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 	{
 		for(int j = 1; j < edges.rows - 1;j++)
 		{
-			int imval = 0;
-			imval = space.at<uchar>(j,i);
+			//int imval = 0;
+			//imval = space.at<uchar>(j,i);
 			for(int k = 0;k < RADIUS_RANGE;k++)
 			{
 				int votes = 0;
-				imval += houghSpace[i][j][k]*1;
-				if(imval > 255)imval = 255;
+				//imval += houghSpace[i][j][k]*1;
+				//if(imval > 255)imval = 255;
 				votes += houghSpace[i][j][k];
-				votes += houghSpace[i+1][j][k];
-				votes += houghSpace[i-1][j][k];
-				votes += houghSpace[i][j+1][k];
-				votes += houghSpace[i][j-1][k];
-				if (votes > highestVotes)
-				{
-					highestVotes = votes;
+				if(k > RADIUS_RANGE/2){
+					if(i+1 <= edges.cols){
+						votes += houghSpace[i+1][j][k]; //1 0
+						if(j-1 >= 0){
+							votes += houghSpace[i+1][j-1][k];//1 - 1
+						}else if(j+1 <= edges.rows){
+							votes += houghSpace[i+1][j+1][k];// 1 1
+						}	
+					}
+					if(j+1 <= edges.rows){
+						votes += houghSpace[i][j+1][k];	//0 1
+					}
+					if(i-1 >= 0){
+						votes += houghSpace[i-1][j][k]; // -1 0
+						if(j-1 >= 0){
+							votes += houghSpace[i-1][j-1][k];//-1 -1
+						}else if(j+1 <= edges.rows){
+							votes += houghSpace[i-1][j+1][k];// -1 1
+						}	
+					}
+					if(j-1 >= 0){
+						votes += houghSpace[i][j-1][k];	// 0 -1
+					}
+					if (votes > highestVotes)
+					{
+						highestVotes = votes;
+					}
 				}
 			}
 		}
@@ -383,123 +391,200 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 		{
 			int imvalPrime = 0;
 			imvalPrime = space.at<uchar>(j,i);
-			int bestCirc[4] = {};
-			int concentric[2] = {};
-			for(int k = 0;k < RADIUS_RANGE;k++)
-			{
-				int votes = 0;
-				imvalPrime += houghSpace[i][j][k]*1;
-				if(imvalPrime > 255)imvalPrime = 255;
-				votes += houghSpace[i][j][k];
-				votes += houghSpace[i+1][j][k];
-				votes += houghSpace[i-1][j][k];
-				votes += houghSpace[i][j+1][k];
-				votes += houghSpace[i][j-1][k];
-				if (votes != 0)
+			if(!regionDoone){
+				int bestCirc[4] = {0,0,0,0};
+				int concentric[2] = {0,0};
+				for(int k = 0;k < RADIUS_RANGE;k++)
 				{
-					votes = (votes * 1000) / (highestVotes);
-				}
-				if(votes > 700)
-				{
-					if (votes > bestCirc[0])
-					{
-						bestCirc[0] = votes;
-						bestCirc[1] = i;
-						bestCirc[2] = j;
-						bestCirc[3] = k+MIN_RAD;
-					}
-				}
-			}
-			// Bigger cicle = bestcirc radius*1.5 -> max radius
-			//Smaller circle = bestcirc radius*2/3 -> min radius
-		/*int imval = 0;
-		imval = space.at<uchar>(j,i);
-		 for(int k = 0;k < (bestCirc[3]-MIN_RAD)*(2/3);k++)
-			{
-				int votes = 0;
-				imval += houghSpace[i][j][k]*1;
-				if(imval > 255)imval = 255;
-				votes += houghSpace[i][j][k];
-				votes += houghSpace[i+1][j][k];
-				votes += houghSpace[i-1][j][k];
-				votes += houghSpace[i][j+1][k];
-				votes += houghSpace[i][j-1][k];
-				if (votes != 0)
-				{
-					votes = (votes * 1000) / (highestVotes);
-				}
-				if(votes > 700)
-				{
-					if (votes > concentric[0])
-					{
-						concentric[0] = votes;
-						concentric[1] = k+MIN_RAD;
-					}
-				}
-			}
-			imval = 0;
-			imval = space.at<uchar>(j,i);
-			for(int k = (bestCirc[3]-MIN_RAD)*1.5;k < RADIUS_RANGE;k++)
-			{
-				int votes = 0;
-				imval += houghSpace[i][j][k]*1;
-				if(imval > 255)imval = 255;
-				votes += houghSpace[i][j][k];
-				votes += houghSpace[i+1][j][k];
-				votes += houghSpace[i-1][j][k];
-				votes += houghSpace[i][j+1][k];
-				votes += houghSpace[i][j-1][k];
-				if (votes != 0)
-				{
-					votes = (votes * 1000) / (highestVotes);
-				}
-				if(votes > 700)
-				{
-					if (votes > concentric[0])
-					{
-						concentric[0] = votes;
-						concentric[1] = k+MIN_RAD;
-					}
-				}
-			}
-			int bestCircX = bestCirc[1];
-			int bestCircY = bestCirc[2];
-			int bestCircRad = bestCirc[3];
-			grey.at<uchar>(bestCircY,bestCircX) = 40;
-			grey.at<uchar>(bestCircY,bestCircX-1) = 40;
-			grey.at<uchar>(bestCircY,bestCircX+1) = 40;
-			grey.at<uchar>(bestCircY-1,bestCircX) = 40;
-			grey.at<uchar>(bestCircY+1,bestCircX) = 40;
-			for(int y = -(bestCircRad);y < (bestCircRad+1);y++)
-			{
-				for(int x = -(bestCircRad);x < (bestCircRad+1);x++)
-				{
-					if(sqrt((x*x) + (y*y)) <= (bestCircRad) && sqrt((x*x) + (y*y)) > (bestCircRad-1))
-					{
-						if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
-						else
+					int votes = 0;
+					imvalPrime += houghSpace[i][j][k];
+					if(imvalPrime > 255)imvalPrime = 255;
+					votes += houghSpace[i][j][k];//0 0 
+					if(k > RADIUS_RANGE/2){
+						if(i+1 <= edges.cols){
+							votes += houghSpace[i+1][j][k]; //1 0
+							if(j-1 >= 0){
+								votes += houghSpace[i+1][j-1][k];//1 - 1
+							}else if(j+1 <= edges.rows){
+								votes += houghSpace[i+1][j+1][k];// 1 1
+							}	
+						}
+						if(j+1 <= edges.rows){
+							votes += houghSpace[i][j+1][k];	//0 1
+						}
+						if(i-1 >= 0){
+							votes += houghSpace[i-1][j][k]; // -1 0
+							if(j-1 >= 0){
+								votes += houghSpace[i-1][j-1][k];//-1 -1
+							}else if(j+1 <= edges.rows){
+								votes += houghSpace[i-1][j+1][k];// -1 1
+							}	
+						}
+						if(j-1 >= 0){
+							votes += houghSpace[i][j-1][k];	// 0 -1
+						}
+						if (votes > highestVotes)
 						{
-							grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+							highestVotes = votes;
+						}
+					}
+					
+					
+					if (votes != 0)
+					{
+						votes = (votes * 1000) / (highestVotes);
+					}
+					if(votes > 900)
+					{
+						if (votes > bestCirc[0])
+						{
+							bestCirc[0] = votes;
+							bestCirc[1] = i;
+							bestCirc[2] = j;
+							bestCirc[3] = k+MIN_RAD;
 						}
 					}
 				}
-			}
-			printf("concentric rad %d \n",concentric[1]);
-			for(int y = -(concentric[1]);y < (concentric[1]+1);y++)
-			{
-				for(int x = -(concentric[1]);x < (concentric[1]+1);x++)
-				{
-					if(sqrt((x*x) + (y*y)) <= (concentric[1]) && sqrt((x*x) + (y*y)) > (concentric[1]-1))
+				// Bigger cicle = bestcirc radius*1.5 -> max radius
+				//Smaller circle = bestcirc radius*2/3 -> min radius
+				if(bestCirc[0] > 0){
+					regionDoone = true;
+					printf("looking for concentric\n");
+					int smallerCirc = (bestCirc[3]-MIN_RAD)*2/3;
+					int biggerCirc = (bestCirc[3]-MIN_RAD)*1.5;
+					printf("%d bigger circ\n",biggerCirc);
+				 	for(int k = 0;k < smallerCirc;k++)
 					{
-						if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
-						else
+						printf("smaller \n");
+						int votes = 0;
+						votes += houghSpace[i][j][k];
+						if(k > RADIUS_RANGE/2){
+							if(i+1 <= edges.cols){
+								votes += houghSpace[i+1][j][k]; //1 0
+								if(j-1 >= 0){
+									votes += houghSpace[i+1][j-1][k];//1 - 1
+								}else if(j+1 <= edges.rows){
+									votes += houghSpace[i+1][j+1][k];// 1 1
+								}	
+							}
+							if(j+1 <= edges.rows){
+								votes += houghSpace[i][j+1][k];	//0 1
+							}
+							if(i-1 >= 0){
+								votes += houghSpace[i-1][j][k]; // -1 0
+								if(j-1 >= 0){
+									votes += houghSpace[i-1][j-1][k];//-1 -1
+								}else if(j+1 <= edges.rows){
+									votes += houghSpace[i-1][j+1][k];// -1 1
+								}	
+							}
+							if(j-1 >= 0){
+								votes += houghSpace[i][j-1][k];	// 0 -1
+							}
+						}
+						if (votes != 0)
 						{
-							grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+							votes = (votes * 1000) / (highestVotes);
+						}
+						if(votes > 100)
+						{
+							if (votes > concentric[0])
+							{
+								concentric[0] = votes;
+								concentric[1] = k+MIN_RAD;
+							}
+						}
+					}
+					for(int k = biggerCirc;k < RADIUS_RANGE;k++)
+					{
+						printf("bigger \n");
+						int votes = 0;
+						votes += houghSpace[i][j][k];
+						if(k > RADIUS_RANGE/2){
+							if(i+1 <= edges.cols){
+								votes += houghSpace[i+1][j][k]; //1 0
+								if(j-1 >= 0){
+									votes += houghSpace[i+1][j-1][k];//1 - 1
+								}else if(j+1 <= edges.rows){
+									votes += houghSpace[i+1][j+1][k];// 1 1
+								}	
+							}
+							if(j+1 <= edges.rows){
+								votes += houghSpace[i][j+1][k];	//0 1
+							}
+							if(i-1 >= 0){
+								votes += houghSpace[i-1][j][k]; // -1 0
+								if(j-1 >= 0){
+									votes += houghSpace[i-1][j-1][k];//-1 -1
+								}else if(j+1 <= edges.rows){
+									votes += houghSpace[i-1][j+1][k];// -1 1
+								}	
+							}
+							if(j-1 >= 0){
+								votes += houghSpace[i][j-1][k];	// 0 -1
+							}
+						}
+						if (votes != 0)
+						{
+							votes = (votes * 1000) / (highestVotes);
+						}
+						if(votes > 100)
+						{
+							if (votes > concentric[0])
+							{
+								concentric[0] = votes;
+								concentric[1] = k+MIN_RAD;
+							}
+						}
+					}
+					int bestCircX = bestCirc[1];
+					int bestCircY = bestCirc[2];
+					int bestCircRad = bestCirc[3];
+					if(bestCircRad != 0){
+						grey.at<uchar>(bestCircY,bestCircX) = 40;
+						grey.at<uchar>(bestCircY,bestCircX-1) = 40;
+						grey.at<uchar>(bestCircY,bestCircX+1) = 40;
+						grey.at<uchar>(bestCircY-1,bestCircX) = 40;
+						grey.at<uchar>(bestCircY+1,bestCircX) = 40;
+						for(int y = -(bestCircRad);y < (bestCircRad+1);y++)
+						{
+							for(int x = -(bestCircRad);x < (bestCircRad+1);x++)
+							{
+								if(sqrt((x*x) + (y*y)) <= (bestCircRad) && sqrt((x*x) + (y*y)) > (bestCircRad-1))
+								{
+									if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
+									else
+									{
+										grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+									}
+								}
+							}
+						}
+					}
+					//if(bestCirc[3] > 0){printf("best circ %d ",bestCirc[3] );printf("concentric %d \n",concentric[1]);}
+					for(int y = -(concentric[1]);y < (concentric[1]+1);y++)
+					{
+						for(int x = -(concentric[1]);x < (concentric[1]+1);x++)
+						{
+							if(sqrt((x*x) + (y*y)) <= (concentric[1]) && sqrt((x*x) + (y*y)) > (concentric[1]-1))
+							{
+								if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
+								else
+								{
+									grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+								}
+							}
 						}
 					}
 				}
-			}*/
+			}else{
+				regionShiftx++;
+				if(regionShiftx > 30  && regionShifty > 30){regionDoone = false;regionShifty = 0;regionShifty = 0;}
+			}
 			space.at<uchar>(j, i) = (uchar) imvalPrime;
+		}
+		if(regionDoone){
+			regionShifty++;
 		}
 	}
 	delete[] houghSpace;
