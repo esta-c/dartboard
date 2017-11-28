@@ -385,6 +385,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 			}
 		}
 	}
+	printf("%d \n", highestVotes);
 	for(int i = 1; i < edges.cols - 1;i++)
 	{
 		for(int j = 1; j < edges.rows - 1;j++)
@@ -423,18 +424,12 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						if(j-1 >= 0){
 							votes += houghSpace[i][j-1][k];	// 0 -1
 						}
-						if (votes > highestVotes)
-						{
-							highestVotes = votes;
-						}
 					}
-					
-					
 					if (votes != 0)
 					{
-						votes = (votes * 1000) / (highestVotes);
+						votes = (votes * 100) / (highestVotes);
 					}
-					if(votes > 900)
+					if(votes > 90)
 					{
 						if (votes > bestCirc[0])
 						{
@@ -449,13 +444,13 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 				//Smaller circle = bestcirc radius*2/3 -> min radius
 				if(bestCirc[0] > 0){
 					regionDoone = true;
-					printf("looking for concentric\n");
+					//printf("looking for concentric\n");
 					int smallerCirc = (bestCirc[3]-MIN_RAD)*2/3;
 					int biggerCirc = (bestCirc[3]-MIN_RAD)*1.5;
-					printf("%d bigger circ\n",biggerCirc);
+					//printf("%d bigger circ\n",biggerCirc);
 				 	for(int k = 0;k < smallerCirc;k++)
 					{
-						printf("smaller \n");
+						//printf("smaller \n");
 						int votes = 0;
 						votes += houghSpace[i][j][k];
 						if(k > RADIUS_RANGE/2){
@@ -484,9 +479,9 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						}
 						if (votes != 0)
 						{
-							votes = (votes * 1000) / (highestVotes);
+							votes = (votes * 100) / (highestVotes);
 						}
-						if(votes > 100)
+						if(votes > 10)
 						{
 							if (votes > concentric[0])
 							{
@@ -497,7 +492,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					}
 					for(int k = biggerCirc;k < RADIUS_RANGE;k++)
 					{
-						printf("bigger \n");
+						//printf("bigger \n");
 						int votes = 0;
 						votes += houghSpace[i][j][k];
 						if(k > RADIUS_RANGE/2){
@@ -526,9 +521,9 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						}
 						if (votes != 0)
 						{
-							votes = (votes * 1000) / (highestVotes);
+							votes = (votes * 100) / (highestVotes);
 						}
-						if(votes > 100)
+						if(votes > 10)
 						{
 							if (votes > concentric[0])
 							{
