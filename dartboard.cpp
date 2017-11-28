@@ -406,7 +406,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 				imvalPrime += houghSpace[i][j][k];
 				if(imvalPrime > 255)imvalPrime = 255;
 			}
-			if(!regionDoone){
+			//if(!regionDoone){
 				int bestCirc[4] = {0,0,0,0};
 				int concentric[2] = {0,0};
 				int center[9] = {0,0,0,0,0,0,0,0,0};
@@ -635,15 +635,15 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 						}
 					}
 				}
-			}else{
-				regionShiftx++;
-				if(regionShiftx > 30  && regionShifty > 30){regionDoone = false;regionShifty = 0;regionShifty = 0;}
-			}
+			//}else{
+			//	regionShiftx++;
+			//	if(regionShiftx > 30  && regionShifty > 30){regionDoone = false;regionShifty = 0;regionShifty = 0;}
+			//}
 			space.at<uchar>(j, i) = (uchar) imvalPrime;
 		}
-		if(regionDoone){
-			regionShifty++;
-		}
+		//if(regionDoone){
+		//	regionShifty++;
+		//}
 	}
 	delete[] houghSpace;
 }
