@@ -364,27 +364,37 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 				//imval += houghSpace[i][j][k]*1;
 				//if(imval > 255)imval = 255;
 				votes += houghSpace[i][j][k];
-				if(k > RADIUS_RANGE/2){
-					if(i+1 <= edges.cols){
+				if(k > RADIUS_RANGE/2)
+				{
+					if(i+1 <= edges.cols)
+					{
 						votes += houghSpace[i+1][j][k]; //1 0
 						if(j-1 >= 0){
 							votes += houghSpace[i+1][j-1][k];//1 - 1
-						}else if(j+1 <= edges.rows){
+						}
+						else if(j+1 <= edges.rows)
+						{
 							votes += houghSpace[i+1][j+1][k];// 1 1
-						}	
+						}
 					}
-					if(j+1 <= edges.rows){
+					if(j+1 <= edges.rows)
+					{
 						votes += houghSpace[i][j+1][k];	//0 1
 					}
-					if(i-1 >= 0){
+					if(i-1 >= 0)
+					{
 						votes += houghSpace[i-1][j][k]; // -1 0
-						if(j-1 >= 0){
+						if(j-1 >= 0)
+						{
 							votes += houghSpace[i-1][j-1][k];//-1 -1
-						}else if(j+1 <= edges.rows){
+						}
+						else if(j+1 <= edges.rows)
+						{
 							votes += houghSpace[i-1][j+1][k];// -1 1
-						}	
+						}
 					}
-					if(j-1 >= 0){
+					if(j-1 >= 0)
+					{
 						votes += houghSpace[i][j-1][k];	// 0 -1
 					}
 					if (votes > highestVotes)
@@ -424,9 +434,9 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 							int center[9] = {0,0,0,0,0,0,0,0,0};
 							for(int k = 0;k < RADIUS_RANGE;k++)
 							{
-								int votes = 0;		
+								int votes = 0;
 								votes += houghSpace[i][j][k];//0 0
-								center[4] += houghSpace[i][j][k]; 
+								center[4] += houghSpace[i][j][k];
 								if(k > 0/*RADIUS_RANGE/2 + 10*/){
 									if(i+1 <= edges.cols){
 										votes += houghSpace[i+1][j][k]; //1 0
@@ -437,7 +447,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 										}else if(j+1 <= edges.rows){
 											votes += houghSpace[i+1][j+1][k];// 1 1
 											center[8] += houghSpace[i+1][j+1][k];
-										}	
+										}
 									}
 									if(j+1 <= edges.rows){
 										votes += houghSpace[i][j+1][k];	//0 1
@@ -452,7 +462,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 										}else if(j+1 <= edges.rows){
 											votes += houghSpace[i-1][j+1][k];// -1 1
 											center[6] += houghSpace[i-1][j+1][k];
-										}	
+										}
 									}
 									if(j-1 >= 0){
 										votes += houghSpace[i][j-1][k];	// 0 -1
@@ -470,10 +480,11 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 										int cx,cy;
 										int index = getIndexOfLargestElement(center,9);
 										//printf("%d  \n", index);
-										switch(index){
+										switch(index)
+										{
 											case 0:
 												cx = i-1;
-												cy = j-1; 
+												cy = j-1;
 												break;
 											case 1:
 												cx = i;
@@ -517,7 +528,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 							}
 							// Bigger cicle = bestcirc radius*1.5 -> max radius
 							//Smaller circle = bestcirc radius*2/3 -> min radius
-							if(bestCirc[0] > 0){
+							if(bestCirc[0] > 0)
+							{
 								regionDoone = true;
 								//printf("looking for concentric\n");
 								int smallerCirc = (bestCirc[3]-MIN_RAD)*4/5;
@@ -528,27 +540,38 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 									//printf("smaller \n");
 									int votes = 0;
 									votes += houghSpace[i][j][k];
-									if(k > RADIUS_RANGE/2){
-										if(i+1 <= edges.cols){
+									if(k > RADIUS_RANGE/2)
+									{
+										if(i+1 <= edges.cols)
+										{
 											votes += houghSpace[i+1][j][k]; //1 0
-											if(j-1 >= 0){
+											if(j-1 >= 0)
+											{
 												votes += houghSpace[i+1][j-1][k];//1 - 1
-											}else if(j+1 <= edges.rows){
+											}
+											else if(j+1 <= edges.rows)
+											{
 												votes += houghSpace[i+1][j+1][k];// 1 1
-											}	
+											}
 										}
-										if(j+1 <= edges.rows){
+										if(j+1 <= edges.rows)
+										{
 											votes += houghSpace[i][j+1][k];	//0 1
 										}
-										if(i-1 >= 0){
+										if(i-1 >= 0)
+										{
 											votes += houghSpace[i-1][j][k]; // -1 0
-											if(j-1 >= 0){
+											if(j-1 >= 0)
+											{
 												votes += houghSpace[i-1][j-1][k];//-1 -1
-											}else if(j+1 <= edges.rows){
+											}
+											else if(j+1 <= edges.rows)
+											{
 												votes += houghSpace[i-1][j+1][k];// -1 1
-											}	
+											}
 										}
-										if(j-1 >= 0){
+										if(j-1 >= 0)
+										{
 											votes += houghSpace[i][j-1][k];	// 0 -1
 										}
 									}
@@ -570,27 +593,38 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 									//printf("bigger \n");
 									int votes = 0;
 									votes += houghSpace[i][j][k];
-									if(k > RADIUS_RANGE/2){
-										if(i+1 <= edges.cols){
+									if(k > RADIUS_RANGE/2)
+									{
+										if(i+1 <= edges.cols)
+										{
 											votes += houghSpace[i+1][j][k]; //1 0
-											if(j-1 >= 0){
+											if(j-1 >= 0)
+											{
 												votes += houghSpace[i+1][j-1][k];//1 - 1
-											}else if(j+1 <= edges.rows){
+											}
+											else if(j+1 <= edges.rows)
+											{
 												votes += houghSpace[i+1][j+1][k];// 1 1
-											}	
+											}
 										}
-										if(j+1 <= edges.rows){
+										if(j+1 <= edges.rows)
+										{
 											votes += houghSpace[i][j+1][k];	//0 1
 										}
-										if(i-1 >= 0){
+										if(i-1 >= 0)
+										{
 											votes += houghSpace[i-1][j][k]; // -1 0
-											if(j-1 >= 0){
+											if(j-1 >= 0)
+											{
 												votes += houghSpace[i-1][j-1][k];//-1 -1
-											}else if(j+1 <= edges.rows){
+											}
+											else if(j+1 <= edges.rows)
+											{
 												votes += houghSpace[i-1][j+1][k];// -1 1
-											}	
+											}
 										}
-										if(j-1 >= 0){
+										if(j-1 >= 0)
+										{
 											votes += houghSpace[i][j-1][k];	// 0 -1
 										}
 									}
@@ -607,7 +641,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 										}
 									}
 								}
-								if(bestCirc[0] > bestBestCirc[0]){
+								if(bestCirc[0] > bestBestCirc[0])
+								{
 									bestBestCirc[0] = bestCirc[0];
 									bestBestCirc[1] = bestCirc[1];
 									bestBestCirc[2] = bestCirc[2];
@@ -619,7 +654,8 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					}
 				}
 			}
-			if(bestBestCirc[0] != 0){
+			if(bestBestCirc[0] != 0)
+			{
 				grey.at<uchar>(bestBestCirc[2],bestBestCirc[1]) = 40;
 				grey.at<uchar>(bestBestCirc[2]-1,bestBestCirc[1]) = 40;
 				grey.at<uchar>(bestBestCirc[2]+1,bestBestCirc[1]) = 40;
