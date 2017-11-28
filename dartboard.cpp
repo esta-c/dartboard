@@ -411,7 +411,7 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 			}
 			// Bigger cicle = bestcirc radius*1.5 -> max radius
 			//Smaller circle = bestcirc radius*2/3 -> min radius
-			for(int k = 0;k < RADIUS_RANGE;k++)
+			for(int k = 0;k < (bestCirc[3]-MIN_RAD)*(2/3);k++)
 			{
 				int votes = 0;
 				imval += houghSpace[i][j][k]*1;
@@ -427,16 +427,36 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 				}
 				if(votes > 700)
 				{
-					if (votes > bestCirc[0])
+					if (votes > concentric[0])
 					{
-						bestCirc[0] = votes;
-						bestCirc[1] = i;
-						bestCirc[2] = j;
-						bestCirc[3] = k+MIN_RAD;
+						concentric[0] = votes;
+						concentric[1] = k+MIN_RAD;
 					}
 				}
 			}
-
+			for(int k = (bestCirc[3]-MIN_RAD)*1.5;k < RADIUS_RANGE;k++)
+			{
+				int votes = 0;
+				imval += houghSpace[i][j][k]*1;
+				if(imval > 255)imval = 255;
+				votes += houghSpace[i][j][k];
+				votes += houghSpace[i+1][j][k];
+				votes += houghSpace[i-1][j][k];
+				votes += houghSpace[i][j+1][k];
+				votes += houghSpace[i][j-1][k];
+				if (votes != 0)
+				{
+					votes = (votes * 1000) / (highestVotes);
+				}
+				if(votes > 700)
+				{
+					if (votes > concentric[0])
+					{
+						concentric[0] = votes;
+						concentric[1] = k+MIN_RAD;
+					}
+				}
+			}
 			int bestCircX = bestCirc[1];
 			int bestCircY = bestCirc[2];
 			int bestCircRad = bestCirc[3];
@@ -450,6 +470,20 @@ void houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 				for(int x = -(bestCircRad);x < (bestCircRad+1);x++)
 				{
 					if(sqrt((x*x) + (y*y)) <= (bestCircRad) && sqrt((x*x) + (y*y)) > (bestCircRad-1))
+					{
+						if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
+						else
+						{
+							grey.at<uchar>(bestCircY + y, bestCircX + x) = 255;
+						}
+					}
+				}
+			}
+			for(int y = -(concentric[1]);y < (concentric[1]+1);y++)
+			{
+				for(int x = -(concentric[1]);x < (concentric[1]+1);x++)
+				{
+					if(sqrt((x*x) + (y*y)) <= (concentric[1]) && sqrt((x*x) + (y*y)) > (concentric[1]-1))
 					{
 						if (bestCircX+x < 0 || bestCircX+x > edges.cols || bestCircY+y < 0 || bestCircY+y > edges.rows){ }
 						else
