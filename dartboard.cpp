@@ -17,8 +17,8 @@
 #include <numeric>
 
 #define MIN_RAD 23 //23
-#define MAX_RAD 125 //125
-#define RADIUS_RANGE 103
+#define MAX_RAD 100 //125
+#define RADIUS_RANGE 78
 
 //circle tester
 /*#define MIN_RAD 160
@@ -34,6 +34,11 @@ vector<Rect> detectAndDisplay(Mat frame,
 											 				vector<Rect> dartboards );
 
 vector<Rect> chooseGroundTruths(int imageNumber);
+
+struct myCircle { int x;
+								int y;
+								int radius1;
+							 	int radius2;};
 
 float f1( vector<Rect> dartboards,
 				  vector<Rect> groundTruths);
@@ -51,7 +56,7 @@ void GaussianBlur(Mat &input,
 void thresholdMag(Mat &input,
 							 		int threshVal);
 
-vector<pair <int,int> > houghCircle(Mat &edges,
+vector<myCircle> houghCircle(Mat &edges,
 								 										Mat &thetas,
 								 										Mat &grey,
 								 										Mat &space);
@@ -62,7 +67,7 @@ void houghLines(Mat&sobelMag,
 								Mat&houghSpaceLines);
 
 vector<Rect> refineDartboards(vector<Rect> dartboards,
-															vector<pair <int,int> > circleCentres);
+																vector<myCircle> circleCentres);
 
 /** Global variables */
 String cascade_name = "cascade.xml";
@@ -173,7 +178,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	circles.create(frame_gray.size(), frame_gray.type());
 	circles = frame_gray;
 
-	vector<pair<int,int> > circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
+	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
 	//imwrite("houghspacelines.jpg", houghSpaceLines);
@@ -188,12 +193,18 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
   cout << dartboards.size() << endl;
 
   // 4. Draw box around dartboards found
-	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
+	//normal dartboards
+	for( int i = 0; i < dartboards.size(); i++ )
+	{
+		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
+	}
+	//refined dartboards
+	/*vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
 		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}
-	return acceptedDartboards;
+	}*/
+	return dartboards;
 }
 
 void thresholdMag(Mat &input,int threshVal)
@@ -229,7 +240,7 @@ int*** create3dArray(int dim1, int dim2, int dim3)
 	return array;
 }
 
-vector<Rect> refineDartboards(vector<Rect> dartboards, vector<pair <int,int> > circleCentres)
+vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCentres)
 {
 	vector<Rect> acceptedDartboards;
 	for (int i = 0; i < dartboards.size(); i++)
@@ -237,21 +248,30 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<pair <int,int> > c
 		for(int j = 0; j < circleCentres.size(); j++)
 		{
 			Rect centralRegion = Rect((dartboards[i].x + dartboards[i].width/4), (dartboards[i].y + dartboards[i].height/4), (dartboards[i].width/2), (dartboards[i].height/2));
-			int x = circleCentres[j].first;
-			int y = circleCentres[j].second;
+			int x = circleCentres[j].x;
+			int y = circleCentres[j].y;
+			int radius1 = circleCentres[j].radius1;
+			int radius2 = circleCentres[j].radius2;
 			if(x > centralRegion.x && x < (centralRegion.x+centralRegion.width) && y > centralRegion.y && y < (centralRegion.y + centralRegion.height))
 			{
-				acceptedDartboards.push_back(dartboards[i]);
+				//printf("radius1 = %i, radius2 = %i, width = %i\n", radius1, radius2, dartboards[i].width);
+				if(dartboards[i].width < radius1*2.4 || dartboards[i].width < radius2*2.4)
+				{
+					if(dartboards[i].width > radius1 || dartboards[i].width > radius2)
+					{
+						acceptedDartboards.push_back(dartboards[i]);
+					}
+				}
 			}
 		}
 	}
 	return acceptedDartboards;
 }
 
-void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
+/*void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
 	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
-	houghSpaceLines.create(max_length, 900, sobelMag.type());
+	houghSpaceLines.create(max_length, 180, sobelMag.type());
 	int houghSpace[max_length][180];
 	for(int i = 0; i < max_length; i++)
 	{
@@ -300,9 +320,9 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 	}
 	for(int i = 0; i < max_length; i++)
 	{
-		for(int j = 0; j < 900; j++)
+		for(int j = 0; j < 180; j++)
 		{
-			int desscaledAngle = j/5;
+			int desscaledAngle = j;
 			int imval = houghSpace[i][desscaledAngle];
 			if (imval > 255)
 			{
@@ -325,10 +345,10 @@ int getIndexOfLargestElement(int arr[], int size)
         }
     }
     return largestIndex;
-}
+} */
 
 
-vector<pair <int,int> > houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
+vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 {
 	float x, y, dx, dy;
 	int x1, y1, x2, y2;
@@ -439,7 +459,7 @@ vector<pair <int,int> > houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &spa
 	int chunkX = edges.cols/chunkRat;
 	//printf("chunked %d  %d \n",chunkX,chunkY);
 	//printf("rows %d  Cols %d \n",edges.rows,edges.cols);
-	vector<pair<int,int> > finalCentres;
+	vector<myCircle> finalCentres;
 	for(int m = 0;m < chunkRat+1;m++)
 	{
 		for(int n = 0;n < chunkRat+1;n++)
@@ -733,10 +753,13 @@ vector<pair <int,int> > houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &spa
 					}
 				}
 				//add this best circle to the list to return
-				pair<int,int> bestCircleCentre (bestBestCirc[1], bestBestCirc[2]);
-				finalCentres.push_back(bestCircleCentre);
+				myCircle bestCircleCentreandRadius;
+				bestCircleCentreandRadius.x = bestBestCirc[1];
+				bestCircleCentreandRadius.y = bestBestCirc[2];
+				bestCircleCentreandRadius.radius1 = bestBestCirc[3];
+				bestCircleCentreandRadius.radius2 = bestBestCirc[4];
+				finalCentres.push_back(bestCircleCentreandRadius);
 			}
-			//printf("one chunnk \n");
 		}
 	}
 	delete[] houghSpace;
@@ -836,7 +859,7 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 				//intersection over union
 				float jaccard = intersectArea/unionArea;
 				//printf("Jaccard %f\n", jaccard);
-				float threshold = 0.5;
+				float threshold = 0.4;
 				if (jaccard > threshold) {
 				//make dartboards detected = loop number + 1
 					boardCount[a] = 1;
@@ -871,9 +894,9 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 	{
 		f1Score = 2*(( precision * recall ) / (precision + recall));
 	 }
-	// printf("TP = %f\n", tp);
-	// printf("FP = %f\n", fp);
-	// printf("FN = %f\n", fn);
+	 printf("TP = %f\n", tp);
+	 printf("FP = %f\n", fp);
+	 printf("FN = %f\n", fn);
 	//add f1Score to total
 	return f1Score;
 }
