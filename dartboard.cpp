@@ -332,7 +332,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			}
 		}
 	}
-
+*/
 int getIndexOfLargestElement(int arr[], int size)
 {
     int largestIndex = 0;
@@ -345,7 +345,7 @@ int getIndexOfLargestElement(int arr[], int size)
         }
     }
     return largestIndex;
-} */
+}
 
 
 vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
