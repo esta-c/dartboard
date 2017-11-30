@@ -194,17 +194,17 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
   // 4. Draw box around dartboards found
 	//normal dartboards
-	for( int i = 0; i < dartboards.size(); i++ )
+	/*for( int i = 0; i < dartboards.size(); i++ )
 	{
 		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}
+	}*/
 	//refined dartboards
-	/*vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
+	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
 		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}*/
-	return dartboards;
+	}
+	return acceptedDartboards;
 }
 
 void thresholdMag(Mat &input,int threshVal)
