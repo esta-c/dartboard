@@ -280,6 +280,7 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 			houghSpace[i][j] = 0;
 		}
 	}
+	int highestVote = 0;
 	for(int i = 0; i < sobelGrad.cols; i++)
 	{
 		for(int j = 0; j < sobelGrad.rows; j++)
@@ -320,6 +321,9 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 						}
 						//printf("%d\n",rho);
 						houghSpace[rho][index] += 1;
+						if(houghSpace[rho][index] > highestVote){
+							highestVote = houghSpace[rho][index];
+						}
 
 					//}
 				}
@@ -332,6 +336,8 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 		{
 			//int desscaledAngle = j/5;
 			int imval = houghSpace[i][j/*desscaledAngle*/];
+			imval = imval * 255/highestVote;
+			//printf("%d",imval);
 			if (imval > 255)
 			{
 				imval = 255;
