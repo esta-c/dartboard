@@ -180,8 +180,8 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 	printf("gets out\n");
-	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
-	//imwrite("houghspacelines.jpg", houghSpaceLines);
+	houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
+	imwrite("houghspacelines.jpg", houghSpaceLines);
 
 	printf("writing houghspace\n");
 
@@ -271,11 +271,11 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
 	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
-	houghSpaceLines.create(max_length, 180, sobelMag.type());
-	int houghSpace[max_length][180];
+	houghSpaceLines.create(max_length, 360, sobelMag.type());
+	int houghSpace[max_length][360];
 	for(int i = 0; i < max_length; i++)
 	{
-		for(int j = 0; j < 180; j++)
+		for(int j = 0; j < 360; j++)
 		{
 			houghSpace[i][j] = 0;
 		}
@@ -305,13 +305,21 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 				{
 					maxGrad = maxGrad - 180;
 				} */
-				for(int k = 0; k < 180; k++)
+				for(int k = -180; k < 180; k++)
 				{
 					//if(k >= minGrad && k <= maxGrad)
 					//{
 						float angle = k * (M_PI / 180);
-						float rho = i*cos(angle) + j*sin(angle);
-						houghSpace[(int)rho][k] += 1;
+						int index = k+180;
+						float icos = i*cos(angle);
+						float jsin = j*sin(angle);
+						int rho = icos + jsin;
+						if(rho < 0){
+							rho = abs(rho);
+							index = index + 180;
+						}
+						//printf("%d\n",rho);
+						houghSpace[rho][index] += 1;
 
 					//}
 				}
@@ -320,7 +328,7 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 	}
 	for(int i = 0; i < max_length; i++)
 	{
-		for(int j = 0; j < 180; j++)
+		for(int j = 0; j < 360; j++)
 		{
 			//int desscaledAngle = j/5;
 			int imval = houghSpace[i][j/*desscaledAngle*/];
@@ -328,6 +336,7 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 			{
 				imval = 255;
 			}
+			imval = imval;
 			houghSpaceLines.at<uchar>(i,j) = imval;
 			}
 		}
