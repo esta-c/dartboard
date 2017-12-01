@@ -36,9 +36,9 @@ vector<Rect> detectAndDisplay(Mat frame,
 vector<Rect> chooseGroundTruths(int imageNumber);
 
 struct myCircle { int x;
-								int y;
-								int radius1;
-							 	int radius2;};
+									int y;
+									int radius1;
+							 		int radius2;};
 
 float f1( vector<Rect> dartboards,
 				  vector<Rect> groundTruths);
@@ -179,7 +179,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	circles = frame_gray;
 
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
-
+	printf("gets out\n");
 	//houghLines(sobelMag, sobelGr, lines, houghSpaceLines);
 	//imwrite("houghspacelines.jpg", houghSpaceLines);
 
@@ -268,7 +268,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 	return acceptedDartboards;
 }
 
-/*void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
+void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 {
 	int max_length = (int)sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows));
 	houghSpaceLines.create(max_length, 180, sobelMag.type());
@@ -289,9 +289,9 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			theta = (theta / 255) * 180;
 			if (imageVal == 255)
 			{
-				float tolerance = 10;
-				float gradient = theta + 90;
-				if (gradient > 180)
+				//float tolerance = 10;
+				//float gradient = theta + 90;
+			/*	if (gradient > 180)
 				{
 					gradient = gradient - 180;
 				}
@@ -304,16 +304,16 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 				if(maxGrad > 180)
 				{
 					maxGrad = maxGrad - 180;
-				}
+				} */
 				for(int k = 0; k < 180; k++)
 				{
-					if(k >= minGrad && k <= maxGrad)
-					{
+					//if(k >= minGrad && k <= maxGrad)
+					//{
 						float angle = k * (M_PI / 180);
 						float rho = i*cos(angle) + j*sin(angle);
 						houghSpace[(int)rho][k] += 1;
 
-					}
+					//}
 				}
 			}
 		}
@@ -322,8 +322,8 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 	{
 		for(int j = 0; j < 180; j++)
 		{
-			int desscaledAngle = j;
-			int imval = houghSpace[i][desscaledAngle];
+			//int desscaledAngle = j/5;
+			int imval = houghSpace[i][j/*desscaledAngle*/];
 			if (imval > 255)
 			{
 				imval = 255;
@@ -332,7 +332,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			}
 		}
 	}
-*/
+
 int getIndexOfLargestElement(int arr[], int size)
 {
     int largestIndex = 0;
@@ -468,13 +468,17 @@ vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 			int bestBestCirc[5] = {0,0,0,0,0};
 			for(int j = 0 + chunkY*m; j < chunkY*(m+1);j++)
 			{
-				if(j < edges.rows-1){
+				if(j < edges.rows-1)
+				{
 					for(int i = 0 + chunkX*n; i < chunkX*(n+1);i++)
 					{
 						//printf("i  %d j  %d\n",i,j );
-						if(i < edges.cols-1){
+						if(i < edges.cols-1)
+						{
 							int imvalPrime = 0;
+							//printf("here1?\n");
 							imvalPrime = space.at<uchar>(j,i);
+							//printf("here2?\n");
 							for(int k = 0;k < RADIUS_RANGE;k++)
 							{
 								imvalPrime += houghSpace[i][j][k];
@@ -762,7 +766,7 @@ vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 			}
 		}
 	}
-	delete[] houghSpace;
+//	delete[] houghSpace;
 	return finalCentres;
 }
 
@@ -894,9 +898,9 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 	{
 		f1Score = 2*(( precision * recall ) / (precision + recall));
 	 }
-	 printf("TP = %f\n", tp);
-	 printf("FP = %f\n", fp);
-	 printf("FN = %f\n", fn);
+	// printf("TP = %f\n", tp);
+	// printf("FP = %f\n", fp);
+	// printf("FN = %f\n", fn);
 	//add f1Score to total
 	return f1Score;
 }
