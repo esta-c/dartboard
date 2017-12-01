@@ -290,26 +290,26 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 			theta = (theta / 255) * 180;
 			if (imageVal == 255)
 			{
-				//float tolerance = 10;
-				//float gradient = theta + 90;
-			/*	if (gradient > 180)
+				float tolerance = 10;
+				float gradient = theta + 90;
+				if (gradient > 180)
 				{
-					gradient = gradient - 180;
+					gradient = -gradient;
 				}
 				float minGrad = gradient - tolerance;
-				if (minGrad < 0)
+				if (minGrad < -180)
 				{
-					minGrad = 180 + minGrad;
+					minGrad = -minGrad;
 				}
 				float maxGrad = gradient + tolerance;
 				if(maxGrad > 180)
 				{
-					maxGrad = maxGrad - 180;
-				} */
+					maxGrad = -maxGrad;
+				}
 				for(int k = -180; k < 180; k++)
 				{
-					//if(k >= minGrad && k <= maxGrad)
-					//{
+					if(k >= minGrad && k <= maxGrad)
+					{
 						float angle = k * (M_PI / 180);
 						int index = k+180;
 						float icos = i*cos(angle);
@@ -325,7 +325,7 @@ void houghLines(Mat &sobelMag, Mat &sobelGrad, Mat &lines, Mat &houghSpaceLines)
 							highestVote = houghSpace[rho][index];
 						}
 
-					//}
+					}
 				}
 			}
 		}
