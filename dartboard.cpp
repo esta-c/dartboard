@@ -370,13 +370,13 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 				//	minGrad = 360 - minGrad;
 				//}
 				float maxGrad = theta + tolerance;
-				if(maxGrad > 360)
-				{
-					maxGrad = maxGrad - 360;
-				}
+				//if(maxGrad > 360)
+				//{
+				//	maxGrad = maxGrad - 360;
+				//}
 				for(int k = 0; k < 360; k++)
 				{
-					if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0))
+					if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || k<=maxGrad-360 && maxGrad > 360)
 					{
 						float angle = k * (M_PI / 180);
 						float icos = (i - centre_x)*cos(angle);
