@@ -64,6 +64,9 @@ void houghLines(Mat&sobelMag,
 vector<Rect> refineDartboards(vector<Rect> dartboards,
 														 	vector<myCircle> circleCentres);
 
+float f1( vector<Rect> dartboards,
+					vector<Rect> groundTruths);
+
 /** Global variables */
 String cascade_name = "cascade.xml";
 CascadeClassifier cascade;
@@ -90,6 +93,9 @@ int main( int argc, const char** argv )
 
 	// 3. Detect dartboards and Display Result
 	dartboards = detectAndDisplay( frame , dartboards );
+
+	//get f1 Score
+	float f1Score = f1( dartboards, groundTruths );
 
 	// 4. Save Result Image
 	imwrite( "detected.jpg", frame );
@@ -152,11 +158,8 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	cvtColor( frame, frame_lab, CV_BGR2Lab);
 	Mat lab[3];
 	split(frame_lab, lab);
-	//hsv[0] = 60;
-	//lab[1] = 10;
 	lab[2] = 0;
 	merge(lab,3,changed_lab);
-	imwrite("hsvTest.jpg", changed_lab);
 	cvtColor( changed_lab, frame_temp, CV_Lab2BGR);
 	cvtColor( frame_temp, frame_gray, CV_BGR2GRAY );
 
@@ -165,7 +168,6 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	equalizeHist( frame_gray, eq_frame_gray );
 	GaussianBlur( eq_frame_gray, 7, frame_gray_blurred);
-	imwrite("frameGreyBlurTest.jpg",frame_gray_blurred);
 	// 2. Perform Viola-Jones Object Detection
 	cascade.detectMultiScale( frame, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
@@ -173,9 +175,9 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	linesGrad.create(frame.size(), CV_64F);
 	sobel(frame_gray_blurred, sobelX, sobelY, sobelMag, sobelGr, linesGrad);
 	imwrite("linesgrad.jpg", linesGrad);
-	imwrite("sobelXTest.jpg", sobelX);
-	imwrite("sobelYTest.jpg", sobelY);
-	imwrite("sobelGrTest.jpg", sobelGr);
+	imwrite("sobelX.jpg", sobelX);
+	imwrite("sobelY.jpg", sobelY);
+	imwrite("sobelGrT.jpg", sobelGr);
 	//threshold image
 	int threshVal1 = 80;
 	for(int i = 0;i < sobelMag.cols;i++)
@@ -193,16 +195,16 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 		}
 	}
 
-	imwrite("sobelMagTest.jpg", sobelMag);
+	imwrite("sobelMag.jpg", sobelMag);
 	//hough transform circles
 	cvtColor(frame_grayReal, circles, COLOR_GRAY2BGR);
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	imwrite("linesgrad.jpg", linesGrad);
 	houghLines(sobelMag, linesGrad, lines, houghSpaceLines);
-	imwrite("houghspacelines.jpg", houghSpaceLines);
-	imwrite("houghSpaceCircleTest.jpg", houghSpaceCircle);
-	imwrite("circlesTest.jpg", circles);
+	imwrite("houghSpaceLines.jpg", houghSpaceLines);
+	imwrite("houghSpaceCircle.jpg", houghSpaceCircle);
+	imwrite("circles.jpg", circles);
   // 3. Print number of dartboards found
   //cout << dartboards.size() << endl;
 
@@ -345,7 +347,6 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			houghSpace[i][j] = 0;
 		}
 	}
-	printf("here\n");
 	int highestVote = 0;
 	pair<int, int> highestIndex;
 	for(int i = 0; i < linesGrad.cols; i++)
@@ -393,7 +394,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			}
 		}
 	}
-	printf("rho = %i, theta = %i\n",highestIndex.first, highestIndex.second);
+	//printf("rho = %i, theta = %i\n",highestIndex.first, highestIndex.second);
 	for(int i = 0; i < max_length; i++)
 	{
 		for(int j = 0; j < 360; j++)
@@ -829,4 +830,70 @@ void GaussianBlur(Mat &input, int size, Mat &blurredOutput)
 			blurredOutput.at<uchar>(i, j) = sum;
 		}
 	}
+}
+
+float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
+{
+	float tpr = 0;
+	float tp = 0;
+	float fp = (float)dartboards.size();
+	int boardCount[10] = {};
+	for(int a = 0; a < (int)groundTruths.size(); a++) {
+		for( int i = 0; i < (int)dartboards.size(); i++ )
+		{
+			//if the box intersects check the level of intersection
+			if( (groundTruths[a].x + groundTruths[a].width) < dartboards[i].x || (dartboards[i].x + dartboards[i].width) < groundTruths[a].x
+					|| (groundTruths[a].y + groundTruths[a].height) < dartboards[i].y || (dartboards[i].y + dartboards[i].height) < groundTruths[a].y)
+			{ /*doesn't intersects*/ }
+			else
+			{
+				//intersection area
+				float intersectWidth = min(dartboards[i].x + dartboards[i].width, groundTruths[a].x + groundTruths[a].width) - max(dartboards[i].x, groundTruths[a].x);
+				float intersectHeight = min(dartboards[i].y + dartboards[i].height, groundTruths[a].y + groundTruths[a].height) - max(dartboards[i].y, groundTruths[a].y);
+				float intersectArea = intersectWidth*intersectHeight;
+				//union area
+				float unionArea = dartboards[i].area() + groundTruths[a].area() - intersectArea;
+				//intersection over union
+				float jaccard = intersectArea/unionArea;
+				//printf("Jaccard %f\n", jaccard);
+				float threshold = 0.4;
+				if (jaccard > threshold) {
+				//make dartboards detected = loop number + 1
+					boardCount[a] = 1;
+					//tp + 1
+					tp++;
+					//reduce fpr by 1
+					fp--;
+				}
+		}
+	}
+}
+	int detectedDartboards = 0;
+	for (int i = 0; i < 10; i++)
+	{
+		detectedDartboards += boardCount[i];
+	}
+	//printf("Detected Dartboards%i\n", detectedDartboards);
+	float fn = (float)groundTruths.size() - (float)detectedDartboards;
+	//tpr
+	tpr = detectedDartboards;
+	//precision
+	float precision = tp / (float)dartboards.size();
+	//recall
+	float recall = tp / (tp + fn);
+	//f1
+	float f1Score = 0;
+	if (precision == 0 || recall == 0)
+	{
+		f1Score = 0;
+	}
+	else
+	{
+		f1Score = 2*(( precision * recall ) / (precision + recall));
+	 }
+	 printf("TP = %f\n", tp);
+	 printf("FP = %f\n", fp);
+	 printf("FN = %f\n", fn);
+	//add f1Score to total
+	return f1Score;
 }
