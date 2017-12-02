@@ -376,7 +376,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 				}
 				for(int k = 0; k < 360; k++)
 				{
-					if((k >= minGrad && k <= maxGrad) || k>=360+minGrad  && minGrad < 0)
+					if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0))
 					{
 						float angle = k * (M_PI / 180);
 						float icos = (i - centre_x)*cos(angle);
@@ -512,10 +512,10 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 
 				if (votes > 90)
 				{
-				int x1, y1, x2, y2;
-          		x1 = y1 = x2 = y2 = 0;
+				int x1, y1, x2, y2, x3, y3;
+          		x1 = y1 = x2 = y2 = x3 = y3 = 0;
 
-				if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
+				/*if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
        			{
 	       			//y = (r - x cos(t)) / sin(t)
 					float radians = j * (M_PI / 180);
@@ -532,10 +532,47 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 					x1 = ((double)(i-(max_length/2)) - ((y1 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
 					y2 = max_length - 0;
 					x2 = ((double)(i-(max_length/2)) - ((y2 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
+       			}*/
+       			float radAlt = (90-(j%90)) * (M_PI / 180);
+       			float radMod =  (j%90) * (M_PI / 180);
+       			if((j >= 180 && j < 270) || (j >=0 && j <90)){
+       				x3 = i* cos(radMod);
+       				y3 = i* sin(radMod);
+   					if(j >= 180 && j <= 270){
+       					x3 = -x3;
+       					y3 = -y3;
+       					x1 = centre_x + x3 + (max_length/2)*cos(radAlt);
+       					y1 = centre_y + y3 - (max_length/2)*sin(radAlt);
+       					x2 = centre_x + x3 - (max_length/2)*sin(radMod);
+       					y2 = centre_y + y3 + (max_length/2)*cos(radMod);
+       				}else{
+       					x1 = centre_x + x3 + (max_length/2)*sin(radMod);
+       					y1 = centre_y + y3 - (max_length/2)*cos(radMod);
+       					x2 = centre_x + x3 - (max_length/2)*cos(radAlt);
+       					y2 = centre_y + y3 + (max_length/2)*sin(radAlt);
+       				}
+       			}else{
+       				//printf("it is voting for us\n");
+       				x3 = i* sin(radMod);
+       				y3 = i* cos(radMod);
+       				if(j >= 90 && j <= 180){
+       					x3 = -x3;
+       					x1 = centre_x + x3 + (max_length/2)*cos(radMod);
+       					y1 = centre_y + y3 + (max_length/2)*sin(radMod);
+       					x2 = centre_x + x3 - (max_length/2)*sin(radAlt);
+       					y2 = centre_y + y3 - (max_length/2)*cos(radAlt);
+       				}else{
+       					y3 = -y3;
+       					x1 = centre_x + x3 + (max_length/2)*sin(radAlt);
+       					y1 = centre_y + y3 + (max_length/2)*cos(radAlt);
+       					x2 = centre_x + x3 - (max_length/2)*cos(radMod);
+       					y2 = centre_y + y3 - (max_length/2)*sin(radMod);
+       				}
        			}
-					Point point1(x1,y1);
-					Point point2(x2,y2);
-					line(lines, point1, point2, Scalar(0,255,0), 2, 8);
+				Point point1(x1,y1);
+				Point point2(x2,y2);
+				line(lines, point1, point2, Scalar(0,255,0), 2, 8);
+				//printf("x1 : %d    y1 : %d  x2 : %d    y2 : %d  \n",x1,y1,x2,y2);
 				}
 			}
 		}
