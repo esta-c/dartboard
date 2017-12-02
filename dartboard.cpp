@@ -365,10 +365,10 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 					theta = theta - 360;
 				}
 				float minGrad = theta - tolerance;
-				if (minGrad < 0)
-				{
-					minGrad = 360 - minGrad;
-				}
+				//if (minGrad < 0)
+				//{
+				//	minGrad = 360 - minGrad;
+				//}
 				float maxGrad = theta + tolerance;
 				if(maxGrad > 360)
 				{
@@ -376,7 +376,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 				}
 				for(int k = 0; k < 360; k++)
 				{
-					if(k >= minGrad && k <= maxGrad)
+					if((k >= minGrad && k <= maxGrad) || k>=360+minGrad  && minGrad < 0)
 					{
 						float angle = k * (M_PI / 180);
 						float icos = (i - centre_x)*cos(angle);
@@ -512,27 +512,27 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 
 				if (votes > 90)
 				{
-					int x1, y1, x2, y2;
-          x1 = y1 = x2 = y2 = 0;
+				int x1, y1, x2, y2;
+          		x1 = y1 = x2 = y2 = 0;
 
-					if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
-       		{
-	       		//y = (r - x cos(t)) / sin(t)
-						float radians = j * (M_PI / 180);
-	         	x1 = 0;
-	         	y1 = ((double)(i-(max_length/2)) - ((x1 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
-	         	x2 = 360;
-	         	y2 = ((double)(i-(max_length/2)) - ((x2 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
+				if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
+       			{
+	       			//y = (r - x cos(t)) / sin(t)
+					float radians = j * (M_PI / 180);
+	         		x1 = 0;
+	         		y1 = ((double)(i-(max_length/2)) - ((x1 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
+	         		x2 = 360;
+	         		y2 = ((double)(i-(max_length/2)) - ((x2 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
 	     		}
 	     		else
-	      	{
-	      		//x = (r - y sin(t)) / cos(t);
-						float radians = j * (M_PI / 180);
-						y1 = 0;
-						x1 = ((double)(i-(max_length/2)) - ((y1 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
-						y2 = max_length - 0;
-         	  x2 = ((double)(i-(max_length/2)) - ((y2 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
-       		}
+	      		{
+	      			//x = (r - y sin(t)) / cos(t);
+					float radians = j * (M_PI / 180);
+					y1 = 0;
+					x1 = ((double)(i-(max_length/2)) - ((y1 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
+					y2 = max_length - 0;
+					x2 = ((double)(i-(max_length/2)) - ((y2 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
+       			}
 					Point point1(x1,y1);
 					Point point2(x2,y2);
 					line(lines, point1, point2, Scalar(0,255,0), 2, 8);
