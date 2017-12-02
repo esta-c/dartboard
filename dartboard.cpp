@@ -406,10 +406,6 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			{
 				imval = 255;
 			}
-			if (i > 400 && imval != 0)
-			{
-			//	printf("imval = %i\n",imval );
-			}
 			houghSpaceLines.at<double>(i,j) = imval;
 			}
 		}
