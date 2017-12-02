@@ -201,7 +201,9 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	imwrite("linesgrad.jpg", linesGrad);
+	cvtColor(frame_grayReal, lines, COLOR_GRAY2BGR);
 	houghLines(sobelMag, linesGrad, lines, houghSpaceLines);
+	imwrite("lines.jpg", lines);
 	imwrite("houghSpaceLines.jpg", houghSpaceLines);
 	imwrite("houghSpaceCircle.jpg", houghSpaceCircle);
 	imwrite("circles.jpg", circles);
@@ -381,12 +383,13 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 						float jsin = (j - centre_y)*sin(angle);
 						int rho = icos + jsin;
 
-						if(rho < 0){
+						if(rho < 0)
+						{
 							rho = abs(rho);
 						}
-
 						houghSpace[rho][k] += 1;
-						if(houghSpace[rho][k] > highestVote){
+						if(houghSpace[rho][k] > highestVote)
+						{
 							highestVote = houghSpace[rho][k];
 							highestIndex.first = rho;
 							highestIndex.second = k;
@@ -396,7 +399,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			}
 		}
 	}
-	//printf("rho = %i, theta = %i\n",highestIndex.first, highestIndex.second);
+	//populate hough space
 	for(int i = 0; i < max_length; i++)
 	{
 		for(int j = 0; j < 360; j++)
@@ -407,9 +410,137 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 				imval = 255;
 			}
 			houghSpaceLines.at<double>(i,j) = imval;
+		}
+	}
+
+	//count up votes and draw lines
+	int highestVotes = 0;
+	//get highest votes
+	for (int i = 0; i < max_length; i++)
+	{
+		for (int j = 0; j < 360; j++)
+		{
+			float votes = 0;
+			votes += houghSpaceLines.at<double>(i,j);
+			//sum up pixel and its neighbours checking for out of bounds
+			if(i+1 < max_length)
+			{
+				votes += houghSpace[i+1][j]; //1 0
+				if(j-1 >= 0)
+				{
+					votes += houghSpace[i+1][j-1];//1 - 1
+				}
+				else if(j+1 <= 360)
+				{
+					votes += houghSpace[i+1][j+1];// 1 1
+				}
+			}
+			if(j+1 <= 360)
+			{
+				votes += houghSpace[i][j+1];	//0 1
+			}
+			if(i-1 >= 0)
+			{
+				votes += houghSpace[i-1][j]; // -1 0
+				if(j-1 >= 0)
+				{
+					votes += houghSpace[i-1][j-1];//-1 -1
+				}
+				else if(j+1 <= 360)
+				{
+					votes += houghSpace[i-1][j+1];// -1 1
+				}
+			}
+			if(j-1 >= 0)
+			{
+				votes += houghSpace[i][j-1];	// 0 -1
+			}
+			if (votes > highestVotes)
+			{
+				highestVotes = (int) votes;
 			}
 		}
 	}
+
+		// use votes to draw lines
+		for (int i = 0; i < max_length; i++)
+		{
+			for (int j = 0; j < 360; j++)
+			{
+				float votes = 0;
+				votes += houghSpaceLines.at<double>(i,j);
+				if(i+1 < max_length)
+				{
+					votes += houghSpace[i+1][j]; //1 0
+					if(j-1 >= 0)
+					{
+						votes += houghSpace[i+1][j-1];//1 - 1
+					}
+					else if(j+1 <= 360)
+					{
+						votes += houghSpace[i+1][j+1];// 1 1
+					}
+				}
+				if(j+1 <= 360)
+				{
+					votes += houghSpace[i][j+1];	//0 1
+				}
+				if(i-1 >= 0)
+				{
+					votes += houghSpace[i-1][j]; // -1 0
+					if(j-1 >= 0)
+					{
+						votes += houghSpace[i-1][j-1];//-1 -1
+					}
+					else if(j+1 <= 360)
+					{
+						votes += houghSpace[i-1][j+1];// -1 1
+					}
+				}
+				if(j-1 >= 0)
+				{
+					votes += houghSpace[i][j-1];	// 0 -1
+				}
+
+				if (votes != 0)
+				{
+					//printf("votesb4 = %f\n",votes);
+
+					votes = (votes * 100) / (highestVotes);
+				//	printf("votesAfter = %f\n",votes);
+				}
+
+				if (votes > 90)
+				{
+					int x1, y1, x2, y2;
+          x1 = y1 = x2 = y2 = 0;
+
+					if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
+       		{
+	       		//y = (r - x cos(t)) / sin(t)
+						float radians = j * (M_PI / 180);
+	         	x1 = 0;
+	         	y1 = ((double)(i-(max_length/2)) - ((x1 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
+	         	x2 = 360;
+	         	y2 = ((double)(i-(max_length/2)) - ((x2 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
+	     		}
+	     		else
+	      	{
+	      		//x = (r - y sin(t)) / cos(t);
+						float radians = j * (M_PI / 180);
+						y1 = 0;
+						x1 = ((double)(i-(max_length/2)) - ((y1 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
+						y2 = max_length - 0;
+         	  x2 = ((double)(i-(max_length/2)) - ((y2 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
+       		}
+					Point point1(x1,y1);
+					Point point2(x2,y2);
+					line(lines, point1, point2, Scalar(0,255,0), 2, 8);
+				}
+			}
+		}
+
+}
 
 vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 {
@@ -475,7 +606,7 @@ vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
 					}
 					if(j+1 <= edges.rows)
 					{
-						votes += houghSpace.at<double>(i,i+1,k);	//0 1
+						votes += houghSpace.at<double>(i,j+1,k);	//0 1
 					}
 					if(i-1 >= 0)
 					{
