@@ -177,7 +177,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	imwrite("linesgrad.jpg", linesGrad);
 	imwrite("sobelX.jpg", sobelX);
 	imwrite("sobelY.jpg", sobelY);
-	imwrite("sobelGrT.jpg", sobelGr);
+	imwrite("sobelGr.jpg", sobelGr);
 	//threshold image
 	int threshVal1 = 80;
 	for(int i = 0;i < sobelMag.cols;i++)
@@ -338,11 +338,11 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 	int max_length = (int)(sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows))/2);
 	int centre_x = (int)sobelMag.cols/2;
 	int centre_y = (int)sobelMag.rows/2;
-	houghSpaceLines.create(max_length, 360, sobelMag.type());
-	int houghSpace[max_length][360];
+	houghSpaceLines.create(max_length, 360, CV_64F);
+	float houghSpace[max_length][360];
 	for(int i = 0; i < max_length; i++)
 	{
-		for(int j = 0; j < 180; j++)
+		for(int j = 0; j < 360; j++)
 		{
 			houghSpace[i][j] = 0;
 		}
@@ -380,9 +380,11 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 						float icos = (i - centre_x)*cos(angle);
 						float jsin = (j - centre_y)*sin(angle);
 						int rho = icos + jsin;
+
 						if(rho < 0){
 							rho = abs(rho);
 						}
+
 						houghSpace[rho][k] += 1;
 						if(houghSpace[rho][k] > highestVote){
 							highestVote = houghSpace[rho][k];
@@ -403,6 +405,10 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			if (imval > 255)
 			{
 				imval = 255;
+			}
+			if (i > 400 && imval != 0)
+			{
+			//	printf("imval = %i\n",imval );
 			}
 			houghSpaceLines.at<double>(i,j) = imval;
 			}
