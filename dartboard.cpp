@@ -121,7 +121,7 @@ vector<Rect> chooseGroundTruths(int imageNumber)
     {Rect(254,170,150,144)}, //7
     {Rect(842,218,117,119), Rect(67,252,60,89)}, //8
     {Rect(203,48,231,232)}, //9
-    {Rect(92,104,95,109), Rect(585,127,56,86), Rect(916,149,37,65)}, //10
+    {Rect(77,89,121,139), Rect(585,127,56,86), Rect(916,149,37,65)}, //10
     {Rect(174,105,59,56), Rect(433,113,40,74)}, //11
     {Rect(156,77,60,137)}, //12
     {Rect(272,120,131,131)}, //13
@@ -186,7 +186,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	imwrite("sobelY.jpg", sobelY);
 	imwrite("sobelGr.jpg", sobelGr);
 	//threshold image
-	int threshVal1 = 80;
+	int threshVal1 = 75;
 	for(int i = 0;i < sobelMag.cols;i++)
 	{
 		for(int j = 0;j < sobelMag.rows;j++)
@@ -221,18 +221,18 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
   // 4. Draw box around dartboards found
 	//normal dartboards
-	/*for( int i = 0; i < dartboards.size(); i++ )
+	for( int i = 0; i < dartboards.size(); i++ )
 	{
 		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}*/
+	}
 	//refined
-	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
+	/*vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
 		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
 	}
-	cout << acceptedDartboards.size() << endl;
-	return acceptedDartboards;
+	cout << acceptedDartboards.size() << endl;*/
+	return dartboards;
 }
 
 void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr, Mat &linesGrad)
@@ -308,7 +308,8 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 {
 	vector<Rect> acceptedDartboards;
 	vector<bool> circleCheck;
-	for (int i = 0;i < circleCentres.size();i++){
+	for (int i = 0;i < circleCentres.size();i++)
+	{
 		circleCheck.push_back(false);
 	}
 	bool dartEval = false;
@@ -324,26 +325,32 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			int radius2 = circleCentres[j].radius2;
 			if(!(x > centralRegion.x && x < (centralRegion.x+centralRegion.width) && y > centralRegion.y && y < (centralRegion.y + centralRegion.height)))
 			{
-				for(int k = 0;k < intersects.size();k++){
+				for(int k = 0;k < intersects.size();k++)
+				{
 					int intX = intersects[k].x;
 					int intY = intersects[k].y;
-					if (intX > x - 10 && intX < x + 10 && intY > y - 10 && intY < y + 10){
-						if(!circleCheck[j] && dartEval){
-							if(radius1 > radius2){
+					if (intX > x - 10 && intX < x + 10 && intY > y - 10 && intY < y + 10)
+					{
+						if(!circleCheck[j] && dartEval)
+						{
+							if(radius1 > radius2)
+							{
 								int width = radius1;
 								Rect newRect(x-width,y-width,2*radius1,2*radius1);
 								acceptedDartboards.push_back(newRect);
-							}else{
+							}
+							else
+							{
 								int width = radius2;
 								Rect newRect(x-width,y-width,2*radius2,2*radius2);
 								acceptedDartboards.push_back(newRect);
 							}
-							printf("circleint\n");
 							circleCheck[j] = true;
 							dartEval = true;
 							}
 						}
-					if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height)){
+					if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height))
+					{
 						if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
 						{
 							if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
@@ -351,16 +358,18 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 								if(!dartEval){
 									acceptedDartboards.push_back(dartboards[i]);
 									dartEval = true;
-									printf("intvi\n");
 								}
 							}
 						}
 					}
-					if(dartEval){
+					if(dartEval)
+					{
 						break;
 					}
 				}
-			}else{
+			}
+			else
+			{
 				if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
 				{
 					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
@@ -684,7 +693,7 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 					if (!skip){
 						Point pointI(i,j);
 						intersects.push_back(pointI);
-						skip = true;	
+						skip = true;
 					}else{
 						ydiff++;
 						if(ydiff > 20 && xdiff > 20){
@@ -1149,7 +1158,7 @@ float f1( vector<Rect> dartboards, vector<Rect> groundTruths)
 				//intersection over union
 				float jaccard = intersectArea/unionArea;
 				//printf("Jaccard %f\n", jaccard);
-				float threshold = 0.4;
+				float threshold = 0.3;
 				if (jaccard > threshold) {
 				//make dartboards detected = loop number + 1
 					boardCount[a] = 1;
