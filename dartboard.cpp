@@ -221,18 +221,18 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
   // 4. Draw box around dartboards found
 	//normal dartboards
-	for( int i = 0; i < dartboards.size(); i++ )
+	/*for( int i = 0; i < dartboards.size(); i++ )
 	{
 		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}
+	}*/
 	//refined
-	/*vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
+	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
 		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
 	}
-	cout << acceptedDartboards.size() << endl;*/
-	return dartboards;
+	cout << acceptedDartboards.size() << endl;
+	return acceptedDartboards;
 }
 
 void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr, Mat &linesGrad)
@@ -355,7 +355,8 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 						{
 							if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
 							{
-								if(!dartEval){
+								if(!dartEval)
+								{
 									acceptedDartboards.push_back(dartboards[i]);
 									dartEval = true;
 								}
@@ -375,14 +376,51 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
 					{
 						if(!circleCheck[j] && !dartEval){
-							acceptedDartboards.push_back(dartboards[i]);
-							printf("circlevi\n");
-							dartEval = true;
-							circleCheck[j] = true;
+							printf("radius 1 = %i radius 2 = %i\n", radius1, radius2);
+							if((radius1 > radius2))
+							{
+								if(radius2 > radius1*0.5)
+								{
+									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
+									acceptedDartboards.push_back(newRect);
+									printf("circlevi\n");
+									dartEval = true;
+									circleCheck[j] = true;
+								}
+								else
+								{
+									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
+									acceptedDartboards.push_back(newRect);
+									printf("circlevi\n");
+									dartEval = true;
+									circleCheck[j] = true;
+								}
+							}
+							else
+							{
+								if(radius1 > radius2*0.5)
+								{
+									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
+									acceptedDartboards.push_back(newRect);
+									printf("circlevi\n");
+									dartEval = true;
+									circleCheck[j] = true;
+								}
+								else
+								{
+									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
+									acceptedDartboards.push_back(newRect);
+									printf("circlevi\n");
+									dartEval = true;
+									circleCheck[j] = true;
+								}
+							}
+
 						}
 					}
 				}
-				if(dartEval){
+				if(dartEval)
+				{
 					break;
 				}
 			}
