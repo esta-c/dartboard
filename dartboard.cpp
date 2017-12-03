@@ -56,7 +56,7 @@ vector<myCircle> houghCircle(Mat &edges,
 														 Mat &grey,
 														 Mat &space);
 
-int houghLines(Mat&sobelMag,
+vector<Point> houghLines(Mat&sobelMag,
 								Mat&slinesGrad,
 								Mat&lines,
 								Mat&houghSpaceLines,
@@ -64,7 +64,8 @@ int houghLines(Mat&sobelMag,
 								Mat&temp);
 
 vector<Rect> refineDartboards(vector<Rect> dartboards,
-														 	vector<myCircle> circleCentres);
+														 	vector<myCircle> circleCentres,
+														 	vector<Point> intersetcs);
 
 float f1( vector<Rect> dartboards,
 					vector<Rect> groundTruths);
@@ -207,23 +208,9 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	imwrite("linesgrad.jpg", linesGrad);
-	int highestval = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
+	vector<Point> highestvals = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
 	imwrite("tempnotthresh.jpg",temp);
-	int threshVal2 = highestval*0.85;
-	for(int i = 0;i < temp.cols;i++)
-	{
-		for(int j = 0;j < temp.rows;j++)
-		{
-			if(temp.at<double>(j,i) < threshVal2)
-			{
-				temp.at<double>(j,i) = 0;
-			}
-			else
-			{
-				temp.at<double>(j,i) = 255;
-			}
-		}
-	}
+
 	imwrite("temp.jpg",temp);
 	imwrite("lines.jpg", lines);
 	imwrite("houghSpaceLines.jpg", houghSpaceLines);
@@ -239,7 +226,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
 	}*/
 	//refined
-	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres);
+	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
 		rectangle(frame, Point(acceptedDartboards[i].x, acceptedDartboards[i].y), Point(acceptedDartboards[i].x + acceptedDartboards[i].width, acceptedDartboards[i].y + acceptedDartboards[i].height), Scalar( 0, 255, 0 ), 2);
@@ -317,9 +304,10 @@ void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr, Ma
 	}
 }
 
-vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCentres)
+vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCentres, vector<Point> intersects)
 {
 	vector<Rect> acceptedDartboards;
+	bool dartEval = false;
 	for (int i = 0; i < dartboards.size(); i++)
 	{
 		for(int j = 0; j < circleCentres.size(); j++)
@@ -333,11 +321,42 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			{
 				if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
 				{
-					if(dartboards[i].width > radius1 || dartboards[i].width > radius2)
+					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
 					{
 						acceptedDartboards.push_back(dartboards[i]);
+						printf("circlevi\n");
+						dartEval = true;
+						break;
 					}
 				}
+			}else{
+				for(int k = 0;k < intersects.size();k++){
+					int intX = intersects[k].x;
+					int intY = intersects[k].y;
+					if (intX > x - 10 && intX < x + 10 && intY > y - 10 && intY < y + 10){
+						int width = radius1/2;
+						Rect newRect(x-width,y-width,radius1,radius1);
+						acceptedDartboards.push_back(newRect);
+						printf("circleint\n");
+						dartEval = true;
+						break;
+					}else if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height)){
+						if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
+						{
+							if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
+							{
+								acceptedDartboards.push_back(dartboards[i]);
+								dartEval = true;
+								printf("intvi\n");
+								break;
+							}
+						}
+					}
+				}
+			}
+			if(dartEval == true){
+				dartEval = false;
+				break;
 			}
 		}
 	}
@@ -357,9 +376,10 @@ int getIndexOfLargestElement(int arr[], int size)
   return largestIndex;
 }
 
-int houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, Mat &blines, Mat &temp)
+vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, Mat &blines, Mat &temp)
 {
 	int highestImageVal = 0;
+	vector<Point> intersects;
 	temp.create(sobelMag.rows, sobelMag.cols, CV_64F);
 	for(int i = 0; i < sobelMag.cols; i++)
 	{
@@ -626,7 +646,40 @@ int houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, 
 				}
 			}
 		}
-		return highestImageVal;
+		int threshVal2 = highestImageVal*0.85;
+		bool skip = false;
+		int ydiff,xdiff;
+		ydiff = xdiff = 0;
+		for(int i = 0;i < temp.cols;i++)
+		{
+			for(int j = 0;j < temp.rows;j++)
+			{
+				if(temp.at<double>(j,i) < threshVal2)
+				{
+					temp.at<double>(j,i) = 0;
+				}
+				else
+				{
+					temp.at<double>(j,i) = 255;
+					if (!skip){
+						Point pointI(i,j);
+						intersects.push_back(pointI);
+						skip = true;	
+					}else{
+						ydiff++;
+						if(ydiff > 20 && xdiff > 20){
+							skip = !skip;
+							ydiff = 0;
+							xdiff = 0;
+						}
+					}
+				}
+				if(skip){
+					xdiff++;
+				}
+			}
+		}
+		return intersects;
 }
 
 vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
