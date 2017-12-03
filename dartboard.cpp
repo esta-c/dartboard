@@ -208,7 +208,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	imwrite("linesgrad.jpg", linesGrad);
 	int highestval = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
-
+	imwrite("temp.jpg",tempnotthresh);
 	int threshVal2 = highestval*0.9;
 	for(int i = 0;i < temp.cols;i++)
 	{
