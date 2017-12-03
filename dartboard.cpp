@@ -209,7 +209,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	imwrite("linesgrad.jpg", linesGrad);
 	int highestval = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
 	imwrite("tempnotthresh.jpg",temp);
-	int threshVal2 = highestval*0.9;
+	int threshVal2 = highestval*0.85;
 	for(int i = 0;i < temp.cols;i++)
 	{
 		for(int j = 0;j < temp.rows;j++)
@@ -610,7 +610,7 @@ int houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, 
 				//cvtColor(frame_grayReal, blines, COLOR_GRAY2BGR);
 				blines = temp.clone();
 				line(blines, point1, point2, Scalar(255,255,255), 2, 8);
-				addWeighted(blines,0.05,temp,0.95,0,temp);
+				addWeighted(blines,0.01,temp,0.99,0,temp);
 				//printf("x1 : %d    y1 : %d  x2 : %d    y2 : %d  \n",x1,y1,x2,y2);
 				}
 			}
