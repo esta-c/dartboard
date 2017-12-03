@@ -307,9 +307,14 @@ void sobel(Mat &input, Mat &sobelX, Mat &sobelY, Mat &sobelMag, Mat &sobelGr, Ma
 vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCentres, vector<Point> intersects)
 {
 	vector<Rect> acceptedDartboards;
+	vector<bool> circleCheck;
+	for (int i = 0;i < circleCentres.size();i++){
+		circleCheck.push_back(false);
+	}
 	bool dartEval = false;
 	for (int i = 0; i < dartboards.size(); i++)
 	{
+		dartEval = false;
 		for(int j = 0; j < circleCentres.size(); j++)
 		{
 			Rect centralRegion = Rect((dartboards[i].x + dartboards[i].width/3), (dartboards[i].y + dartboards[i].height/3), (dartboards[i].width/3), (dartboards[i].height/3));
@@ -317,48 +322,63 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 			int y = circleCentres[j].y;
 			int radius1 = circleCentres[j].radius1;
 			int radius2 = circleCentres[j].radius2;
-			if(x > centralRegion.x && x < (centralRegion.x+centralRegion.width) && y > centralRegion.y && y < (centralRegion.y + centralRegion.height))
+			if(!(x > centralRegion.x && x < (centralRegion.x+centralRegion.width) && y > centralRegion.y && y < (centralRegion.y + centralRegion.height)))
 			{
-				if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
-				{
-					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
-					{
-						acceptedDartboards.push_back(dartboards[i]);
-						printf("circlevi\n");
-						dartEval = true;
-						break;
-					}
-				}
-			}else{
 				for(int k = 0;k < intersects.size();k++){
 					int intX = intersects[k].x;
 					int intY = intersects[k].y;
 					if (intX > x - 10 && intX < x + 10 && intY > y - 10 && intY < y + 10){
-						int width = radius1/2;
-						Rect newRect(x-width,y-width,radius1,radius1);
-						acceptedDartboards.push_back(newRect);
-						printf("circleint\n");
-						dartEval = true;
-						break;
-					}else if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height)){
+						if(!circleCheck[j] && dartEval){
+							if(radius1 > radius2){
+								int width = radius1;
+								Rect newRect(x-width,y-width,2*radius1,2*radius1);
+								acceptedDartboards.push_back(newRect);
+							}else{
+								int width = radius2;
+								Rect newRect(x-width,y-width,2*radius2,2*radius2);
+								acceptedDartboards.push_back(newRect);
+							}
+							printf("circleint\n");
+							circleCheck[j] = true;
+							dartEval = true;
+							}
+						}
+					if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height)){
 						if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
 						{
 							if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
 							{
-								acceptedDartboards.push_back(dartboards[i]);
-								dartEval = true;
-								printf("intvi\n");
-								break;
+								if(!dartEval){
+									acceptedDartboards.push_back(dartboards[i]);
+									dartEval = true;
+									printf("intvi\n");
+								}
 							}
 						}
 					}
+					if(dartEval){
+						break;
+					}
+				}
+			}else{
+				if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
+				{
+					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
+					{
+						if(!circleCheck[j] && !dartEval){
+							acceptedDartboards.push_back(dartboards[i]);
+							printf("circlevi\n");
+							dartEval = true;
+							circleCheck[j] = true;
+						}
+					}
+				}
+				if(dartEval){
+					break;
 				}
 			}
-			if(dartEval == true){
-				dartEval = false;
-				break;
-			}
 		}
+
 	}
 	return acceptedDartboards;
 }
