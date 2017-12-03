@@ -56,7 +56,7 @@ vector<myCircle> houghCircle(Mat &edges,
 														 Mat &grey,
 														 Mat &space);
 
-void houghLines(Mat&sobelMag,
+int houghLines(Mat&sobelMag,
 								Mat&slinesGrad,
 								Mat&lines,
 								Mat&houghSpaceLines,
@@ -156,6 +156,7 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	Mat linesGrad;
 	Mat blines;
 	Mat temp;
+	Mat frame_grayReal_blurred;
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_grayReal, CV_BGR2GRAY);
@@ -172,8 +173,9 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	equalizeHist( frame_gray, eq_frame_gray );
 	GaussianBlur( eq_frame_gray, 7, frame_gray_blurred);
+	GaussianBlur( frame_grayReal, 7, frame_grayReal_blurred);
 	// 2. Perform Viola-Jones Object Detection
-	cascade.detectMultiScale( frame, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
+	cascade.detectMultiScale( frame_grayReal_blurred, dartboards, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(50, 50), Size(500,500) );
 
 	//2.5 Perform sobel transform
 	linesGrad.create(frame.size(), CV_64F);
@@ -205,10 +207,23 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	vector<myCircle> circleCentres = houghCircle(sobelMag, sobelGr, circles, houghSpaceCircle);
 
 	imwrite("linesgrad.jpg", linesGrad);
-	cvtColor(frame_grayReal, lines, COLOR_GRAY2BGR);
-	cvtColor(frame_grayReal, temp, COLOR_GRAY2BGR);
-	temp = cv::Scalar(0,0,0);
-	houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
+	int highestval = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
+
+	int threshVal2 = highestval*0.9;
+	for(int i = 0;i < temp.cols;i++)
+	{
+		for(int j = 0;j < temp.rows;j++)
+		{
+			if(temp.at<double>(j,i) < threshVal2)
+			{
+				temp.at<double>(j,i) = 0;
+			}
+			else
+			{
+				temp.at<double>(j,i) = 255;
+			}
+		}
+	}
 	imwrite("temp.jpg",temp);
 	imwrite("lines.jpg", lines);
 	imwrite("houghSpaceLines.jpg", houghSpaceLines);
@@ -342,8 +357,17 @@ int getIndexOfLargestElement(int arr[], int size)
   return largestIndex;
 }
 
-void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, Mat &blines, Mat &temp)
+int houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, Mat &blines, Mat &temp)
 {
+	int highestImageVal = 0;
+	temp.create(sobelMag.rows, sobelMag.cols, CV_64F);
+	for(int i = 0; i < sobelMag.cols; i++)
+	{
+		for(int j = 0; j < sobelMag.rows; j++)
+		{
+			temp.at<double>(j,i) = 0;
+		}
+	}
 	int max_length = (int)(sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows))/2);
 	int centre_x = (int)sobelMag.cols/2;
 	int centre_y = (int)sobelMag.rows/2;
@@ -386,7 +410,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines,
 					//}
 					for(int k = 0; k < 360; k+=5)
 					{
-						if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || k<=maxGrad-360 && maxGrad > 360)
+						if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || (k<=maxGrad-360 && maxGrad > 360))
 						{
 							float angle = k * (M_PI / 180);
 							float icos = (i - centre_x)*cos(angle);
@@ -591,7 +615,18 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines,
 				}
 			}
 		}
-
+		for (int i = 0; i < temp.cols; i++)
+		{
+			for (int j = 0; j < temp.rows; j++)
+			{
+				int imVal = temp.at<double>(j,i);
+				if (imVal > highestImageVal)
+				{
+					highestImageVal = (int)imVal;
+				}
+			}
+		}
+		return highestImageVal;
 }
 
 vector<myCircle> houghCircle(Mat &edges, Mat &thetas, Mat &grey, Mat &space)
