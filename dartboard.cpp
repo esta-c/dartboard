@@ -59,7 +59,9 @@ vector<myCircle> houghCircle(Mat &edges,
 void houghLines(Mat&sobelMag,
 								Mat&slinesGrad,
 								Mat&lines,
-								Mat&houghSpaceLines);
+								Mat&houghSpaceLines,
+								Mat&blines,
+								Mat&temp);
 
 vector<Rect> refineDartboards(vector<Rect> dartboards,
 														 	vector<myCircle> circleCentres);
@@ -152,6 +154,8 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	Mat lines;
 	Mat houghSpaceLines;
 	Mat linesGrad;
+	Mat blines;
+	Mat temp;
 
 	// 1. Prepare Image by turning it into Grayscale and normalising lighting
 	cvtColor( frame, frame_grayReal, CV_BGR2GRAY);
@@ -202,7 +206,10 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	imwrite("linesgrad.jpg", linesGrad);
 	cvtColor(frame_grayReal, lines, COLOR_GRAY2BGR);
-	houghLines(sobelMag, linesGrad, lines, houghSpaceLines);
+	cvtColor(frame_grayReal, temp, COLOR_GRAY2BGR);
+	temp = cv::Scalar(0,0,0);
+	houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
+	imwrite("temp.jpg",temp);
 	imwrite("lines.jpg", lines);
 	imwrite("houghSpaceLines.jpg", houghSpaceLines);
 	imwrite("houghSpaceCircle.jpg", houghSpaceCircle);
@@ -335,7 +342,7 @@ int getIndexOfLargestElement(int arr[], int size)
   return largestIndex;
 }
 
-void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
+void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines, Mat &blines, Mat &temp)
 {
 	int max_length = (int)(sqrt((sobelMag.cols*sobelMag.cols) + (sobelMag.rows*sobelMag.rows))/2);
 	int centre_x = (int)sobelMag.cols/2;
@@ -350,6 +357,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 		}
 	}
 	int highestVote = 0;
+	int offset = 10;
 	pair<int, int> highestIndex;
 	for(int i = 0; i < linesGrad.cols; i++)
 	{
@@ -359,40 +367,43 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 			float theta = linesGrad.at<double>(j,i);
 			if (imageVal == 255)
 			{
-				float tolerance = 10;
-				if (theta > 360)
-				{
-					theta = theta - 360;
-				}
-				float minGrad = theta - tolerance;
-				//if (minGrad < 0)
-				//{
-				//	minGrad = 360 - minGrad;
-				//}
-				float maxGrad = theta + tolerance;
-				//if(maxGrad > 360)
-				//{
-				//	maxGrad = maxGrad - 360;
-				//}
-				for(int k = 0; k < 360; k++)
-				{
-					if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || k<=maxGrad-360 && maxGrad > 360)
-					{
-						float angle = k * (M_PI / 180);
-						float icos = (i - centre_x)*cos(angle);
-						float jsin = (j - centre_y)*sin(angle);
-						int rho = icos + jsin;
 
-						if(rho < 0)
+				if((theta >= offset && theta <= 90-offset) || (theta >= 90+offset && theta <= 180-offset) || (theta >= 180+offset && theta <= 270-offset) || (theta >= 270 + offset && theta <= 360 - offset)){
+					float tolerance = 1;
+					if (theta > 360)
+					{
+						theta = theta - 360;
+					}
+					float minGrad = theta - tolerance;
+					//if (minGrad < 0)
+					//{
+					//	minGrad = 360 - minGrad;
+					//}
+					float maxGrad = theta + tolerance;
+					//if(maxGrad > 360)
+					//{
+					//	maxGrad = maxGrad - 360;
+					//}
+					for(int k = 0; k < 360; k+=5)
+					{
+						if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || k<=maxGrad-360 && maxGrad > 360)
 						{
-							rho = abs(rho);
-						}
-						houghSpace[rho][k] += 1;
-						if(houghSpace[rho][k] > highestVote)
-						{
-							highestVote = houghSpace[rho][k];
-							highestIndex.first = rho;
-							highestIndex.second = k;
+							float angle = k * (M_PI / 180);
+							float icos = (i - centre_x)*cos(angle);
+							float jsin = (j - centre_y)*sin(angle);
+							int rho = icos + jsin;
+
+							if(rho < 0)
+							{
+								rho = abs(rho);
+							}
+							houghSpace[rho][k] += 1;
+							if(houghSpace[rho][k] > highestVote)
+							{
+								highestVote = houghSpace[rho][k];
+								highestIndex.first = rho;
+								highestIndex.second = k;
+							}
 						}
 					}
 				}
@@ -510,7 +521,7 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
 				//	printf("votesAfter = %f\n",votes);
 				}
 
-				if (votes > 90)
+				if (votes > 10)
 				{
 				int x1, y1, x2, y2, x3, y3;
           		x1 = y1 = x2 = y2 = x3 = y3 = 0;
@@ -541,15 +552,15 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
    					if(j >= 180 && j <= 270){
        					x3 = -x3;
        					y3 = -y3;
-       					x1 = centre_x + x3 + (max_length/2)*cos(radAlt);
-       					y1 = centre_y + y3 - (max_length/2)*sin(radAlt);
-       					x2 = centre_x + x3 - (max_length/2)*sin(radMod);
-       					y2 = centre_y + y3 + (max_length/2)*cos(radMod);
+       					x1 = centre_x + x3 + (max_length)*cos(radAlt);
+       					y1 = centre_y + y3 - (max_length)*sin(radAlt);
+       					x2 = centre_x + x3 - (max_length)*sin(radMod);
+       					y2 = centre_y + y3 + (max_length)*cos(radMod);
        				}else{
-       					x1 = centre_x + x3 + (max_length/2)*sin(radMod);
-       					y1 = centre_y + y3 - (max_length/2)*cos(radMod);
-       					x2 = centre_x + x3 - (max_length/2)*cos(radAlt);
-       					y2 = centre_y + y3 + (max_length/2)*sin(radAlt);
+       					x1 = centre_x + x3 + (max_length)*sin(radMod);
+       					y1 = centre_y + y3 - (max_length)*cos(radMod);
+       					x2 = centre_x + x3 - (max_length)*cos(radAlt);
+       					y2 = centre_y + y3 + (max_length)*sin(radAlt);
        				}
        			}else{
        				//printf("it is voting for us\n");
@@ -557,21 +568,25 @@ void houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSpaceLines)
        				y3 = i* cos(radMod);
        				if(j >= 90 && j <= 180){
        					x3 = -x3;
-       					x1 = centre_x + x3 + (max_length/2)*cos(radMod);
-       					y1 = centre_y + y3 + (max_length/2)*sin(radMod);
-       					x2 = centre_x + x3 - (max_length/2)*sin(radAlt);
-       					y2 = centre_y + y3 - (max_length/2)*cos(radAlt);
+       					x1 = centre_x + x3 + (max_length)*cos(radMod);
+       					y1 = centre_y + y3 + (max_length)*sin(radMod);
+       					x2 = centre_x + x3 - (max_length)*sin(radAlt);
+       					y2 = centre_y + y3 - (max_length)*cos(radAlt);
        				}else{
        					y3 = -y3;
-       					x1 = centre_x + x3 + (max_length/2)*sin(radAlt);
-       					y1 = centre_y + y3 + (max_length/2)*cos(radAlt);
-       					x2 = centre_x + x3 - (max_length/2)*cos(radMod);
-       					y2 = centre_y + y3 - (max_length/2)*sin(radMod);
+       					x1 = centre_x + x3 + (max_length)*sin(radAlt);
+       					y1 = centre_y + y3 + (max_length)*cos(radAlt);
+       					x2 = centre_x + x3 - (max_length)*cos(radMod);
+       					y2 = centre_y + y3 - (max_length)*sin(radMod);
        				}
        			}
+
 				Point point1(x1,y1);
 				Point point2(x2,y2);
-				line(lines, point1, point2, Scalar(0,255,0), 2, 8);
+				//cvtColor(frame_grayReal, blines, COLOR_GRAY2BGR);
+				blines = temp.clone();
+				line(blines, point1, point2, Scalar(255,255,255), 2, 8);
+				addWeighted(blines,0.05,temp,0.95,0,temp);
 				//printf("x1 : %d    y1 : %d  x2 : %d    y2 : %d  \n",x1,y1,x2,y2);
 				}
 			}
