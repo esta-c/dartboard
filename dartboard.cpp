@@ -546,19 +546,6 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 			}
 		}
 	}
-	//populate hough space
-	for(int i = 0; i < max_length; i++)
-	{
-		for(int j = 0; j < 360; j++)
-		{
-			int imval = houghSpace[i][j];
-			if (imval > 255)
-			{
-				imval = 255;
-			}
-			houghSpaceLines.at<double>(i,j) = imval+50;
-		}
-	}
 
 	//count up votes and draw lines
 	int highestVotes = 0;
@@ -608,7 +595,19 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 			}
 		}
 	}
-
+	//populate hough space
+	for(int i = 0; i < max_length; i++)
+	{
+		for(int j = 0; j < 360; j++)
+		{
+			int imval = houghSpace[i][j]*(255/highestVotes);
+			if (imval > 255)
+			{
+				imval = 255;
+			}
+			houghSpaceLines.at<double>(i,j) = imval;
+		}
+	}
 		// use votes to draw lines
 		for (int i = 0; i < max_length; i++)
 		{
