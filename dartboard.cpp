@@ -308,14 +308,20 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 {
 	vector<Rect> acceptedDartboards;
 	vector<bool> circleCheck;
+	vector<bool> interCheck;
+	vector<bool> dartCheck;
 	for (int i = 0;i < circleCentres.size();i++)
 	{
 		circleCheck.push_back(false);
 	}
-	bool dartEval = false;
+	for(int i = 0;i < dartboards.size();i++){
+		dartCheck.push_back(false);
+	}
+	for(int i = 0;i < intersects.size();i++){
+		interCheck.push_back(false);
+	}
 	for (int i = 0; i < dartboards.size(); i++)
 	{
-		dartEval = false;
 		for(int j = 0; j < circleCentres.size(); j++)
 		{
 			Rect centralRegion = Rect((dartboards[i].x + dartboards[i].width/3), (dartboards[i].y + dartboards[i].height/3), (dartboards[i].width/3), (dartboards[i].height/3));
@@ -331,69 +337,22 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 					int intY = intersects[k].y;
 					if (intX > x - 10 && intX < x + 10 && intY > y - 10 && intY < y + 10)
 					{
-						if(!circleCheck[j] && dartEval)
+						if(!circleCheck[j] && !interCheck[k])
 						{
+							printf("circleint\n");
 							if(radius1 > radius2)
-							{
-								int width = radius1;
-								Rect newRect(x-width,y-width,2*radius1,2*radius1);
-								acceptedDartboards.push_back(newRect);
-							}
-							else
-							{
-								int width = radius2;
-								Rect newRect(x-width,y-width,2*radius2,2*radius2);
-								acceptedDartboards.push_back(newRect);
-							}
-							circleCheck[j] = true;
-							dartEval = true;
-							}
-						}
-					if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height))
-					{
-						if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
-						{
-							if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
-							{
-								if(!dartEval)
-								{
-									acceptedDartboards.push_back(dartboards[i]);
-									dartEval = true;
-								}
-							}
-						}
-					}
-					if(dartEval)
-					{
-						break;
-					}
-				}
-			}
-			else
-			{
-				if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
-				{
-					if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
-					{
-						if(!circleCheck[j] && !dartEval){
-							printf("radius 1 = %i radius 2 = %i\n", radius1, radius2);
-							if((radius1 > radius2))
 							{
 								if(radius2 > radius1*0.5)
 								{
 									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 									acceptedDartboards.push_back(newRect);
 									printf("circlevi\n");
-									dartEval = true;
-									circleCheck[j] = true;
 								}
 								else
 								{
 									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 									acceptedDartboards.push_back(newRect);
 									printf("circlevi\n");
-									dartEval = true;
-									circleCheck[j] = true;
 								}
 							}
 							else
@@ -403,31 +362,115 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 									acceptedDartboards.push_back(newRect);
 									printf("circlevi\n");
-									dartEval = true;
-									circleCheck[j] = true;
 								}
 								else
 								{
 									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 									acceptedDartboards.push_back(newRect);
 									printf("circlevi\n");
-									dartEval = true;
-									circleCheck[j] = true;
 								}
 							}
-
+							circleCheck[j] = true;
+							interCheck[k] = true;
+							}
 						}
 					}
 				}
-				if(dartEval)
+				else
 				{
-					break;
+					if(dartboards[i].width < radius1*2.6 || dartboards[i].width < radius2*2.6)
+					{
+						if(dartboards[i].width > radius1*0.8 || dartboards[i].width > radius2*0.8)
+						{
+							if(!circleCheck[j] && !dartCheck[i])
+							{
+								if((radius1 > radius2))
+								{
+									if(radius2 > radius1*0.5)
+									{
+										Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
+										acceptedDartboards.push_back(newRect);
+										printf("circlevi\n");
+										dartCheck[i] = true;
+										circleCheck[j] = true;
+									}
+									else
+									{
+										Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
+										acceptedDartboards.push_back(newRect);
+										printf("circlevi\n");
+										dartCheck[i] = true;
+										circleCheck[j] = true;
+									}
+								}
+								else
+								{
+									if(radius1 > radius2*0.5)
+									{
+										Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
+										acceptedDartboards.push_back(newRect);
+										printf("circlevi\n");
+										dartCheck[i] = true;
+										circleCheck[j] = true;
+									}
+									else
+									{
+										Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
+										acceptedDartboards.push_back(newRect);
+										printf("circlevi\n");
+										dartCheck[i] = true;
+										circleCheck[j] = true;
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
-
-	}
-	return acceptedDartboards;
+		//printf("no seggy");
+		for (int i = 0; i < dartboards.size(); i++)
+		{
+			for(int k = 0; k < intersects.size();k++)
+			{
+				int intX = intersects[k].x;
+				int intY = intersects[k].y;
+				Rect centralRegion = Rect((dartboards[i].x + dartboards[i].width/3), (dartboards[i].y + dartboards[i].height/3), (dartboards[i].width/3), (dartboards[i].height/3));
+				if(intX > centralRegion.x && intX < (centralRegion.x+centralRegion.width) && intY > centralRegion.y && intY < (centralRegion.y + centralRegion.height))
+				{
+					if(dartboards[i].width < MAX_RAD*2.6)
+					{
+						if(dartboards[i].width > MIN_RAD*0.8)
+						{
+							if(acceptedDartboards.size() > 0)
+							{
+								for(int m = 0;m < acceptedDartboards.size();m++)
+								{
+									if(!dartCheck[i] && !interCheck[k] && !((dartboards[i] & acceptedDartboards[m]).area() > 0))
+									{
+										printf("intvi\n");
+										acceptedDartboards.push_back(dartboards[i]);
+										dartCheck[i] = true;
+										interCheck[k] = true;
+									}
+								}
+							}
+							else
+							{
+								if(!dartCheck[i] && !interCheck[k])
+								{
+									printf("intvi\n");
+									acceptedDartboards.push_back(dartboards[i]);
+									dartCheck[i] = true;
+									interCheck[k] = true;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return acceptedDartboards;
 }
 
 int getIndexOfLargestElement(int arr[], int size)
@@ -486,15 +529,7 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 						theta = theta - 360;
 					}
 					float minGrad = theta - tolerance;
-					//if (minGrad < 0)
-					//{
-					//	minGrad = 360 - minGrad;
-					//}
 					float maxGrad = theta + tolerance;
-					//if(maxGrad > 360)
-					//{
-					//	maxGrad = maxGrad - 360;
-					//}
 					for(int k = 0; k < 360; k+=5)
 					{
 						if((k >= minGrad && k <= maxGrad) || (k>=360+minGrad  && minGrad < 0) || (k<=maxGrad-360 && maxGrad > 360))
@@ -508,7 +543,7 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 							{
 								rho = abs(rho);
 							}
-							houghSpace[rho][k] += 1;
+							houghSpace[rho][k] += 10;
 							if(houghSpace[rho][k] > highestVote)
 							{
 								highestVote = houghSpace[rho][k];
@@ -626,35 +661,13 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 
 				if (votes != 0)
 				{
-					//printf("votesb4 = %f\n",votes);
-
 					votes = (votes * 100) / (highestVotes);
-				//	printf("votesAfter = %f\n",votes);
 				}
 
 				if (votes > 10)
 				{
 				int x1, y1, x2, y2, x3, y3;
           		x1 = y1 = x2 = y2 = x3 = y3 = 0;
-
-				/*if((j >= 45 && j <= 135) || (j >= 225 && j <= 315))
-       			{
-	       			//y = (r - x cos(t)) / sin(t)
-					float radians = j * (M_PI / 180);
-	         		x1 = 0;
-	         		y1 = ((double)(i-(max_length/2)) - ((x1 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
-	         		x2 = 360;
-	         		y2 = ((double)(i-(max_length/2)) - ((x2 - 180 ) * cos(radians))) / sin(radians) + (max_length / 2);
-	     		}
-	     		else
-	      		{
-	      			//x = (r - y sin(t)) / cos(t);
-					float radians = j * (M_PI / 180);
-					y1 = 0;
-					x1 = ((double)(i-(max_length/2)) - ((y1 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
-					y2 = max_length - 0;
-					x2 = ((double)(i-(max_length/2)) - ((y2 - (max_length/2) ) * sin(radians))) / cos(radians) + 180;
-       			}*/
        			float radAlt = (90-(j%90)) * (M_PI / 180);
        			float radMod =  (j%90) * (M_PI / 180);
        			if((j >= 180 && j < 270) || (j >=0 && j <90)){
