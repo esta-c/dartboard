@@ -181,7 +181,6 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 	//2.5 Perform sobel transform
 	linesGrad.create(frame.size(), CV_64F);
 	sobel(frame_gray_blurred, sobelX, sobelY, sobelMag, sobelGr, linesGrad);
-	imwrite("linesgrad.jpg", linesGrad);
 	imwrite("sobelX.jpg", sobelX);
 	imwrite("sobelY.jpg", sobelY);
 	imwrite("sobelGr.jpg", sobelGr);
@@ -209,23 +208,12 @@ vector<Rect> detectAndDisplay( Mat frame , vector<Rect> dartboards )
 
 	imwrite("linesgrad.jpg", linesGrad);
 	vector<Point> highestvals = houghLines(sobelMag, linesGrad, lines, houghSpaceLines,blines,temp);
-	imwrite("tempnotthresh.jpg",temp);
-
-	imwrite("temp.jpg",temp);
-	imwrite("lines.jpg", lines);
+	imwrite("cartesianLineNodes.jpg",temp);
+	imwrite("lines.jpg", blines);
 	imwrite("houghSpaceLines.jpg", houghSpaceLines);
 	imwrite("houghSpaceCircle.jpg", houghSpaceCircle);
 	imwrite("circles.jpg", circles);
-  // 3. Print number of dartboards found
-  //cout << dartboards.size() << endl;
 
-  // 4. Draw box around dartboards found
-	//normal dartboards
-	/*for( int i = 0; i < dartboards.size(); i++ )
-	{
-		rectangle(frame, Point(dartboards[i].x, dartboards[i].y), Point(dartboards[i].x + dartboards[i].width, dartboards[i].y + dartboards[i].height), Scalar( 0, 255, 0 ), 2);
-	}*/
-	//refined
 	vector<Rect> acceptedDartboards = refineDartboards(dartboards, circleCentres,highestvals);
 	for( int i = 0; i < acceptedDartboards.size(); i++ )
 	{
@@ -339,20 +327,20 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 					{
 						if(!circleCheck[j] && !interCheck[k])
 						{
-							printf("circleint\n");
+					//		printf("circleint\n");
 							if(radius1 > radius2)
 							{
 								if(radius2 > radius1*0.5)
 								{
 									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 									acceptedDartboards.push_back(newRect);
-									printf("circlevi\n");
+							//		printf("circlevi\n");
 								}
 								else
 								{
 									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 									acceptedDartboards.push_back(newRect);
-									printf("circlevi\n");
+							//		printf("circlevi\n");
 								}
 							}
 							else
@@ -361,13 +349,13 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 								{
 									Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 									acceptedDartboards.push_back(newRect);
-									printf("circlevi\n");
+								//	printf("circlevi\n");
 								}
 								else
 								{
 									Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 									acceptedDartboards.push_back(newRect);
-									printf("circlevi\n");
+								//	printf("circlevi\n");
 								}
 							}
 							circleCheck[j] = true;
@@ -390,7 +378,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 									{
 										Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 										acceptedDartboards.push_back(newRect);
-										printf("circlevi\n");
+								//		printf("circlevi\n");
 										dartCheck[i] = true;
 										circleCheck[j] = true;
 									}
@@ -398,7 +386,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 									{
 										Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 										acceptedDartboards.push_back(newRect);
-										printf("circlevi\n");
+									//	printf("circlevi\n");
 										dartCheck[i] = true;
 										circleCheck[j] = true;
 									}
@@ -409,7 +397,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 									{
 										Rect newRect(x-radius1, y-radius1, radius1*2, radius1*2);
 										acceptedDartboards.push_back(newRect);
-										printf("circlevi\n");
+									//	printf("circlevi\n");
 										dartCheck[i] = true;
 										circleCheck[j] = true;
 									}
@@ -417,7 +405,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 									{
 										Rect newRect(x-radius2, y-radius2, radius2*2, radius2*2);
 										acceptedDartboards.push_back(newRect);
-										printf("circlevi\n");
+									//	printf("circlevi\n");
 										dartCheck[i] = true;
 										circleCheck[j] = true;
 									}
@@ -428,7 +416,6 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 				}
 			}
 		}
-		//printf("no seggy");
 		for (int i = 0; i < dartboards.size(); i++)
 		{
 			for(int k = 0; k < intersects.size();k++)
@@ -448,7 +435,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 								{
 									if(!dartCheck[i] && !interCheck[k] && !((dartboards[i] & acceptedDartboards[m]).area() > 0))
 									{
-										printf("intvi\n");
+								//		printf("intvi\n");
 										acceptedDartboards.push_back(dartboards[i]);
 										dartCheck[i] = true;
 										interCheck[k] = true;
@@ -459,7 +446,7 @@ vector<Rect> refineDartboards(vector<Rect> dartboards, vector<myCircle> circleCe
 							{
 								if(!dartCheck[i] && !interCheck[k])
 								{
-									printf("intvi\n");
+							//		printf("intvi\n");
 									acceptedDartboards.push_back(dartboards[i]);
 									dartCheck[i] = true;
 									interCheck[k] = true;
@@ -670,33 +657,41 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
           		x1 = y1 = x2 = y2 = x3 = y3 = 0;
        			float radAlt = (90-(j%90)) * (M_PI / 180);
        			float radMod =  (j%90) * (M_PI / 180);
-       			if((j >= 180 && j < 270) || (j >=0 && j <90)){
+       			if((j >= 180 && j < 270) || (j >=0 && j <90))
+						{
        				x3 = i* cos(radMod);
        				y3 = i* sin(radMod);
-   					if(j >= 180 && j <= 270){
+   					if(j >= 180 && j <= 270)
+						{
        					x3 = -x3;
        					y3 = -y3;
        					x1 = centre_x + x3 + (max_length)*cos(radAlt);
        					y1 = centre_y + y3 - (max_length)*sin(radAlt);
        					x2 = centre_x + x3 - (max_length)*sin(radMod);
        					y2 = centre_y + y3 + (max_length)*cos(radMod);
-       				}else{
+       				}
+							else
+							{
        					x1 = centre_x + x3 + (max_length)*sin(radMod);
        					y1 = centre_y + y3 - (max_length)*cos(radMod);
        					x2 = centre_x + x3 - (max_length)*cos(radAlt);
        					y2 = centre_y + y3 + (max_length)*sin(radAlt);
        				}
-       			}else{
-       				//printf("it is voting for us\n");
+       			}
+						else
+						{
        				x3 = i* sin(radMod);
        				y3 = i* cos(radMod);
-       				if(j >= 90 && j <= 180){
+       				if(j >= 90 && j <= 180)
+							{
        					x3 = -x3;
        					x1 = centre_x + x3 + (max_length)*cos(radMod);
        					y1 = centre_y + y3 + (max_length)*sin(radMod);
        					x2 = centre_x + x3 - (max_length)*sin(radAlt);
        					y2 = centre_y + y3 - (max_length)*cos(radAlt);
-       				}else{
+       				}
+							else
+							{
        					y3 = -y3;
        					x1 = centre_x + x3 + (max_length)*sin(radAlt);
        					y1 = centre_y + y3 + (max_length)*cos(radAlt);
@@ -704,14 +699,11 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
        					y2 = centre_y + y3 - (max_length)*sin(radMod);
        				}
        			}
-
 				Point point1(x1,y1);
 				Point point2(x2,y2);
-				//cvtColor(frame_grayReal, blines, COLOR_GRAY2BGR);
 				blines = temp.clone();
 				line(blines, point1, point2, Scalar(255,255,255), 2, 8);
 				addWeighted(blines,0.01,temp,0.99,0,temp);
-				//printf("x1 : %d    y1 : %d  x2 : %d    y2 : %d  \n",x1,y1,x2,y2);
 				}
 			}
 		}
@@ -741,11 +733,14 @@ vector<Point> houghLines(Mat &sobelMag, Mat &linesGrad, Mat &lines, Mat &houghSp
 				else
 				{
 					temp.at<double>(j,i) = 255;
-					if (!skip){
+					if (!skip)
+					{
 						Point pointI(i,j);
 						intersects.push_back(pointI);
 						skip = true;
-					}else{
+					}
+					else
+					{
 						ydiff++;
 						if(ydiff > 20 && xdiff > 20){
 							skip = !skip;
